@@ -1,25 +1,25 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-/* === Tokens de marca y tipografía (Tailwind v4) === */
-@theme {
-  /* Fuente base (Inter se aplicará desde layout con next/font; aquí definimos fallback) */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+/* === Tokens de marca y tipografía (Trailer Burger Hall Style Guide) === */
+:root {
+  /* Paleta de marca */
+  --color-espresso: #3b1f1a;
+  --color-bronze: #c08a3e;
+  --color-sage: #6b8e62;
+  --color-wine: #6a1e1a;
+  --color-marfil: #f6f1e7;
+  --color-grafito: #1a1a1a;
 
-  /* Paleta de marca (rojos) con buen contraste para texto blanco en 600+ */
-  --color-brand-50:  #fef2f2;
-  --color-brand-100: #fee2e2;
-  --color-brand-200: #fecaca;
-  --color-brand-300: #fca5a5;
-  --color-brand-400: #f87171;
-  --color-brand-500: #ef4444;
-  --color-brand-600: #dc2626; /* AA con texto blanco */
-  --color-brand-700: #b91c1c; /* sugerido para header/botones */
-  --color-brand-800: #991b1b;
-  --color-brand-900: #7f1d1d;
+  /* Variables semánticas */
+  --color-bg: var(--color-marfil);
+  --color-card: #ffffff;
+  --color-accent: var(--color-bronze);
+  --color-cta: var(--color-sage);
+  --color-danger: var(--color-wine);
 
-  /* Colores base de la UI */
-  --color-background: #ffffff;
-  --color-foreground: #171717;
+  /* Tipografía */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Montserrat', sans-serif;
 }
 
 /* === Accesibilidad global === */
@@ -45,7 +45,176 @@
 
 /* Base del documento */
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-espresso);
+  font-family: var(--font-body);
+}
+
+/* Utilidades de tipografía */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-sans {
+  font-family: var(--font-body);
+}
+
+/* Componentes */
+
+.card {
+  background-color: var(--color-card);
+  color: var(--color-espresso);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-bronze);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--color-bronze);
+  color: var(--color-espresso);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.btn:hover {
+  background-color: #fff6eb;
+  border-color: var(--color-bronze);
+}
+
+.btn[aria-pressed='true'],
+.btn-active {
+  background-color: #fff2e0;
+  border-color: var(--color-bronze);
+}
+
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  background-color: var(--color-sage);
+  color: #fff;
+  border: none;
+  transition: background-color 0.2s ease;
+}
+
+.btn-cta:hover {
+  background-color: var(--color-bronze);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--color-bronze);
+  color: var(--color-espresso);
+  background: transparent;
+}
+
+/* Inputs (checkbox, radio) - usar color bronce en lugar del azul por defecto */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-bronze);
+}
+
+/* Texto de precio base en tarjetas de proteína */
+.protein-price {
+  font-size: 0.85rem; /* más pequeño */
+  margin-left: 0.25rem; /* espacio respecto al nombre */
+  color: var(--color-espresso);
+  opacity: 0.8;
+}
+
+/* === CTA banner premium === */
+.cta-banner {
+  background: linear-gradient(
+    135deg,
+    var(--espresso, var(--color-espresso)) 0%,
+    #5a2b23 40%,
+    var(--bronze, var(--color-bronze)) 100%
+  );
+  color: #fff;
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(59, 31, 26, 0.25);
+}
+
+/* Tamaño grande para CTAs */
+.btn-lg {
+  padding: 0.9rem 1.25rem;
+  font-size: 1.05rem;
+}
+
+/* Botón outline blanco para usar sobre fondos oscuros */
+.btn-ghost-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem 1.25rem;
+  border-radius: 1rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid #fff;
+  color: #fff;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.btn-ghost-light:hover {
+  background: #fff;
+  color: var(--espresso, var(--color-espresso));
+}
+
+/* --- Menu (chips y badges suaves) --- */
+.price-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  background: #fff6eb;
+  border: 1px solid var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--accent);
+  font-size: 0.75rem;
+  color: var(--primary);
+  background: transparent;
+}
+.card-hover {
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+.section-sub {
+  color: rgba(59, 31, 26, 0.7);
 }

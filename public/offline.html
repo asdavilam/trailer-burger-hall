@@ -1,28 +1,74 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sin conexión — Trailer Burger Hall</title>
-  <meta name="theme-color" content="#3B1F1A" />
-  <style>
-    :root { --espresso:#3B1F1A; --salvia:#6B8E62; --dorado:#C08A3E; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; background:#fff; color:#333; }
-    .wrap { min-height: 100dvh; display:grid; place-items:center; padding:24px; text-align:center; }
-    .card { max-width: 560px; border:1px solid #eee; border-radius:16px; padding:24px; }
-    h1 { margin:0 0 8px; color:var(--espresso); font-size:24px; }
-    p { margin:8px 0; color:#666; }
-    a.btn { display:inline-block; margin-top:16px; background:var(--salvia); color:#fff; padding:10px 16px; border-radius:10px; text-decoration:none; font-weight:600; }
-    a.btn:focus, a.btn:hover { background:var(--dorado); outline:none; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card" role="status" aria-live="polite">
-      <h1>Estás sin conexión</h1>
-      <p>No pudimos cargar la página. Intenta nuevamente cuando tengas internet.</p>
-      <a class="btn" href="/">Volver al inicio</a>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sin conexión — Trailer Burger Hall</title>
+    <meta name="theme-color" content="#3B1F1A" />
+    <style>
+      :root {
+        --espresso: #3b1f1a;
+        --salvia: #6b8e62;
+        --dorado: #c08a3e;
+      }
+      body {
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          'Helvetica Neue',
+          Arial;
+        background: #fff;
+        color: #333;
+      }
+      .wrap {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        text-align: center;
+      }
+      .card {
+        max-width: 560px;
+        border: 1px solid #eee;
+        border-radius: 16px;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        color: var(--espresso);
+        font-size: 24px;
+      }
+      p {
+        margin: 8px 0;
+        color: #666;
+      }
+      a.btn {
+        display: inline-block;
+        margin-top: 16px;
+        background: var(--salvia);
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      a.btn:focus,
+      a.btn:hover {
+        background: var(--dorado);
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card" role="status" aria-live="polite">
+        <h1>Estás sin conexión</h1>
+        <p>No pudimos cargar la página. Intenta nuevamente cuando tengas internet.</p>
+        <a class="btn" href="/">Volver al inicio</a>
+      </div>
     </div>
-  </div>
-</body>
+  </body>
 </html>
