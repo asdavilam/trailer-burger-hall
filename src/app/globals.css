@@ -1,26 +1,51 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* === Tokens de marca y tipografía (Tailwind v4) === */
+@theme {
+  /* Fuente base (Inter se aplicará desde layout con next/font; aquí definimos fallback) */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+
+  /* Paleta de marca (rojos) con buen contraste para texto blanco en 600+ */
+  --color-brand-50:  #fef2f2;
+  --color-brand-100: #fee2e2;
+  --color-brand-200: #fecaca;
+  --color-brand-300: #fca5a5;
+  --color-brand-400: #f87171;
+  --color-brand-500: #ef4444;
+  --color-brand-600: #dc2626; /* AA con texto blanco */
+  --color-brand-700: #b91c1c; /* sugerido para header/botones */
+  --color-brand-800: #991b1b;
+  --color-brand-900: #7f1d1d;
+
+  /* Colores base de la UI */
+  --color-background: #ffffff;
+  --color-foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* === Accesibilidad global === */
+
+/* Foco visible consistente (refuerza en caso de no usar utilidades ring) */
+:focus-visible {
+  outline: 2px solid #111827; /* gray-900 */
+  outline-offset: 2px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Screen-reader only (fallback si la util de Tailwind no está disponible) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
+/* Base del documento */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
 }
