@@ -224,11 +224,12 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, id: inserted.id });
-  } catch (e: any) {
-    console.error('[feedback] route error', e);
-    return NextResponse.json(
-      { ok: false, error: 'server_error', detail: e?.message ?? 'unknown' },
-      { status: 500 }
-    );
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'unknown';
+  console.error('[feedback] route error', e);
+  return NextResponse.json(
+    { ok: false, error: 'server_error', detail: msg },
+    { status: 500 }
+  );
   }
 }

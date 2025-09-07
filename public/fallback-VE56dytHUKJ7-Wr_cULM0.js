@@ -1,0 +1,1 @@
+(()=>{"use strict";self.fallback=async e=>{switch(e.destination){case"document":return caches.match("/offline.html",{ignoreSearch:!0});case"image":return caches.match("/icons/icon-192.png",{ignoreSearch:!0});case"audio":case"video":case"font":return caches.match("/offline.html",{ignoreSearch:!0});default:return Response.error()}}})();

@@ -11,7 +11,7 @@ export async function logout() {
   try {
     await supabase.auth.signOut()
   // eslint-disable-next-line no-empty
-  } catch (_) {}
+  } catch {}
 
   const jar = await cookies()
   for (const c of jar.getAll()) {

@@ -88,12 +88,12 @@ export default function ContactForm() {
         return
       }
       if (!res.ok) {
-  let data: any = null;
+  let data: unknown = null;
   try {
     data = await res.json();
   } catch {
     const text = await res.text().catch(() => '');
-    data = text ? { raw: text } : {};
+    data = text ? { raw: text } as unknown : {};
   }
   console.error('[feedback] client error', res.status, data);
   setStatus(res.status === 429 ? 'ratelimited' : 'error');

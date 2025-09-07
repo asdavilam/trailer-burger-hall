@@ -4,14 +4,15 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { requireAdmin } from '@/lib/auth'
 import NoticeForm from '../NoticeForm'
 
-export default async function NoticeEditPage({ params }: { params: { id: string } }) {
+export default async function NoticeEditPage({ params }: { params: Promise<{ id: string } >}) {
   await requireAdmin()
 
+  const { id } = await params
   const supabase = await supabaseServer()
   const { data, error } = await supabase
     .from('notices')
     .select('id,title,body,image_url,priority,is_active,starts_at,ends_at')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error) {
