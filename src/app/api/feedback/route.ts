@@ -6,6 +6,12 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
+
+type ResendSendResult = {
+  data?: { id?: string } | null
+  error?: { message?: string } | null
+}
+
 // —— Validación ————————————————————————————————————————
 const schema = z.object({
   name: z.string().min(2),
@@ -127,36 +133,34 @@ export async function POST(req: Request) {
       let adminErrMsg: string | null = null;
 
       try {
-        const adminRes = await resend.emails.send({
-          from: emailFrom,
-          to: emailTo,
-          subject: adminSubject,
-          html: adminHtml,
-          // Opcional: que el botón “Responder” vaya al cliente:
-          replyTo: email,
-        });
+    const adminRes = (await resend.emails.send({
+      from: emailFrom,
+      to: emailTo,
+      subject: adminSubject,
+      html: adminHtml,
+      replyTo: email,
+    })) as ResendSendResult;
 
-        if ('error' in adminRes && adminRes.error) {
-          adminStatus = 'error';
-          adminErrMsg = adminRes.error.message;
-        } else {
-          // @ts-ignore
-          adminMsgId = adminRes.data?.id ?? null;
-        }
-      } catch (e: any) {
-        adminStatus = 'error';
-        adminErrMsg = e?.message ?? 'send_failed';
-      } finally {
-        await supabase.from('email_log').insert({
-          kind: 'feedback_admin',
-          to_email: emailTo,
-          subject: adminSubject,
-          status: adminStatus,
-          message_id: adminMsgId,
-          error: adminErrMsg,
-          payload: { name, email, phone: normPhone, type, order_ref: normOrder },
-        });
-      }
+    if (adminRes.error?.message) {
+      adminStatus = 'error';
+      adminErrMsg = adminRes.error.message;
+    } else {
+      adminMsgId = adminRes.data?.id ?? null;
+    }
+  } catch (e: unknown) {
+    adminStatus = 'error';
+    adminErrMsg = e instanceof Error ? e.message : 'send_failed';
+  } finally {
+    await supabase.from('email_log').insert({
+      kind: 'feedback_admin',
+      to_email: emailTo,
+      subject: adminSubject,
+      status: adminStatus,
+      message_id: adminMsgId,
+      error: adminErrMsg,
+      payload: { name, email, phone: normPhone, type, order_ref: normOrder },
+    });
+  }
 
       // 2) Auto-reply al cliente
       const userSubject = 'Gracias por contactarnos — Trailer Burger Hall 🍔';
@@ -172,37 +176,36 @@ export async function POST(req: Request) {
       let userMsgId: string | null = null;
       let userErrMsg: string | null = null;
 
-      try {
-        const userRes = await resend.emails.send({
-          from: emailFrom,
-          to: email,            // 👈 se envía al cliente
-          subject: userSubject,
-          html: userHtml,
-          replyTo: emailTo,    // si responde, te llega a tu inbox
-        });
+     try {
+    const userRes = (await resend.emails.send({
+      from: emailFrom,
+      to: email,
+      subject: userSubject,
+      html: userHtml,
+      replyTo: emailTo,
+    })) as ResendSendResult;
 
-        if ('error' in userRes && userRes.error) {
-          userStatus = 'error';
-          userErrMsg = userRes.error.message;
-        } else {
-          // @ts-ignore
-          userMsgId = userRes.data?.id ?? null;
-        }
-      } catch (e: any) {
-        userStatus = 'error';
-        userErrMsg = e?.message ?? 'send_failed';
-      } finally {
-        await supabase.from('email_log').insert({
-          kind: 'feedback_ack',
-          to_email: email,
-          subject: userSubject,
-          status: userStatus,
-          message_id: userMsgId,
-          error: userErrMsg,
-          payload: { name, type },
-        });
-      }
+    if (userRes.error?.message) {
+      userStatus = 'error';
+      userErrMsg = userRes.error.message;
     } else {
+      userMsgId = userRes.data?.id ?? null;
+    }
+  } catch (e: unknown) {
+    userStatus = 'error';
+    userErrMsg = e instanceof Error ? e.message : 'send_failed';
+  } finally {
+    await supabase.from('email_log').insert({
+      kind: 'feedback_ack',
+      to_email: email,
+      subject: userSubject,
+      status: userStatus,
+      message_id: userMsgId,
+      error: userErrMsg,
+      payload: { name, type },
+    });
+  }
+} else {
       // Sin Resend configurado: dejamos registro "skipped"
       await supabase.from('email_log').insert([
         {

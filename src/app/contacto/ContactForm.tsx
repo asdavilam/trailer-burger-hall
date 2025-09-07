@@ -14,6 +14,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+function emitGAFeedbackSubmitted(values: FormValues) {
+  if (typeof window === 'undefined') return
+  // acceso seguro a gtag sin ts-ignore ni any
+  const w = window as unknown as { gtag?: (...args: unknown[]) => void }
+  w.gtag?.('event', 'feedback_submitted', {
+    feedback_type: values.type,
+    has_order_ref: Boolean(values.order_ref),
+  })
+}
+
 export default function ContactForm() {
   const [values, setValues] = useState<FormValues>({
     name: '',
@@ -91,16 +101,7 @@ export default function ContactForm() {
 }
 
       setStatus('ok')
-
-      // GA4 opcional
-      // @ts-ignore
-      if (typeof window !== 'undefined' && window.gtag) {
-        // @ts-ignore
-        window.gtag('event', 'feedback_submitted', {
-          feedback_type: values.type,
-          has_order_ref: Boolean(values.order_ref),
-        })
-      }
+      emitGAFeedbackSubmitted(values)
 
       // Limpia formulario
       setValues({ name: '', email: '', phone: '', type: 'sugerencia', order_ref: '', message: '' })

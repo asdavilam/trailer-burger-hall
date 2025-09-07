@@ -5,7 +5,6 @@ import Script from 'next/script'
 import Hero from './components/Hero'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Clock } from 'lucide-react'
 import OpeningHours from './components/OpeningHours'
 
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['400'], display: 'swap' })

@@ -2,6 +2,8 @@
 
 // ❌ Quitar este import porque no se usa aquí
 // import ConfirmSubmit from '@/app/components/admin/ConfirmSubmit'
+type ProteinCategory = 'carne' | 'mar' | 'vegetariano'
+const CATEGORIES: ProteinCategory[] = ['carne', 'mar', 'vegetariano']
 
 type ProteinFormProps = {
   mode: 'new' | 'edit'
@@ -11,10 +13,9 @@ type ProteinFormProps = {
     description?: string | null
     price_base: number
     available: boolean,
+    category?: ProteinCategory | null
   }
 }
-
-const CATEGORIES = ['carne', 'mar', 'vegetariano'] as const
 
 export default function ProteinForm({ mode, initial }: ProteinFormProps) {
   return (
@@ -60,7 +61,7 @@ export default function ProteinForm({ mode, initial }: ProteinFormProps) {
         <select
           name="category"
           className="input"
-          defaultValue={(initial as any)?.category ?? CATEGORIES[0]}
+          defaultValue={initial?.category ?? CATEGORIES[0]} // 👈 sin any
         >
           {CATEGORIES.map(c => (
             <option key={c} value={c}>

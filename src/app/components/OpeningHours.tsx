@@ -69,10 +69,6 @@ function esLabel(eng: string) {
   return map[eng] ?? eng
 }
 
-function pad(n: number) {
-  return n < 10 ? `0${n}` : `${n}`
-}
-
 function hhmmToMinutes(hhmm: string) {
   const [h, m] = hhmm.split(':').map(Number)
   if (Number.isNaN(h) || Number.isNaN(m)) return null
