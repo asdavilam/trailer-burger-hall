@@ -5,6 +5,8 @@ import Script from 'next/script'
 import Hero from './components/Hero'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Clock } from 'lucide-react'
+import OpeningHours from './components/OpeningHours'
 
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['400'], display: 'swap' })
 
@@ -75,83 +77,85 @@ export default async function HomePage() {
       <Hero />
 
       {/* Avisos vigentes */}
-      <section aria-labelledby="avisos-heading">
-        <h2 id="avisos-heading" className="font-display text-xl tracking-wide mb-3">
-          Avisos
-        </h2>
+{activeNotices.length > 0 && (
+  <section aria-labelledby="avisos-heading">
+    <h2 id="avisos-heading" className="font-display text-xl tracking-wide mb-3">
+      Avisos
+    </h2>
 
-        {activeNotices.length === 0 ? (
-          <p className="text-muted">No hay avisos por el momento.</p>
-        ) : (
-          (() => {
-            const noticesWithImage = activeNotices.filter((n) => !!n.image_url)
-            const useCarousel = noticesWithImage.length >= 2
+    {(() => {
+      const noticesWithImage = activeNotices.filter((n) => !!n.image_url)
+      const useCarousel = noticesWithImage.length >= 2
 
-            if (useCarousel) {
-              // Carrusel sin JS con scroll-snap
-              return (
-                <div className="overflow-x-auto pb-2 -mx-4 px-4">
-                  <div className="flex gap-4 snap-x snap-mandatory">
-                    {noticesWithImage.map((n) => (
-                      <article
-                        key={n.id}
-                        className="card min-w-[280px] md:min-w-[360px] snap-start"
-                      >
-                        <div className="relative w-full h-40 rounded-lg overflow-hidden mb-3">
-                          <Image
-                            src={n.image_url as string}
-                            alt={n.title}
-                            fill
-                            sizes="(max-width: 768px) 280px, 360px"
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        <div className="flex items-start justify-between">
-                          <h3 className="font-semibold">{n.title}</h3>
-                          {typeof n.priority === 'number' && (
-                            <span className="badge">Prioridad {n.priority}</span>
-                          )}
-                        </div>
-                        {n.body && <p className="text-sm text-muted mt-1">{n.body}</p>}
-                      </article>
-                    ))}
+      if (useCarousel) {
+        // Carrusel sin JS con scroll-snap
+        return (
+          <div className="overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="flex gap-4 snap-x snap-mandatory">
+              {noticesWithImage.map((n) => (
+                <article
+                  key={n.id}
+                  className="min-w-[280px] md:min-w-[360px] snap-start rounded-xl border bg-white p-3 shadow-sm"
+                >
+                  <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-3">
+                    <Image
+                      src={n.image_url as string}
+                      alt={n.title}
+                      fill
+                      sizes="(max-width: 768px) 280px, 360px"
+                      className="object-cover"
+                      unoptimized
+                    />
                   </div>
-                </div>
-              )
-            }
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-semibold leading-snug line-clamp-2">{n.title}</h3>
+                    {typeof n.priority === 'number' && (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border border-[--accent] text-[--espresso]/80">
+                        Prioridad {n.priority}
+                      </span>
+                    )}
+                  </div>
+                  {n.body && <p className="text-sm text-muted mt-1 line-clamp-3">{n.body}</p>}
+                </article>
+              ))}
+            </div>
+          </div>
+        )
+      }
 
-            // Lista de tarjetas (texto o una sola imagen)
-            return (
-              <ul className="grid gap-4 md:grid-cols-2">
-                {activeNotices.map((n) => (
-                  <li key={n.id} className="card">
-                    {n.image_url ? (
-                      <div className="relative w-full h-40 rounded-lg overflow-hidden mb-3">
-                        <Image
-                          src={n.image_url}
-                          alt={n.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
-                    ) : null}
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-semibold">{n.title}</h3>
-                      {typeof n.priority === 'number' && (
-                        <span className="badge">Prioridad {n.priority}</span>
-                      )}
-                    </div>
-                    {n.body && <p className="text-sm text-muted mt-1">{n.body}</p>}
-                  </li>
-                ))}
-              </ul>
-            )
-          })()
-        )}
-      </section>
+      // Lista de tarjetas (1 sola imagen o solo texto)
+      return (
+        <ul className="grid gap-4 md:grid-cols-2">
+          {activeNotices.map((n) => (
+            <li key={n.id} className="rounded-xl border bg-white p-4 shadow-sm">
+              {n.image_url ? (
+                <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-3">
+                  <Image
+                    src={n.image_url}
+                    alt={n.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ) : null}
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-semibold leading-snug">{n.title}</h3>
+                {typeof n.priority === 'number' && (
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border border-[--accent] text-[--espresso]/80">
+                    Prioridad {n.priority}
+                  </span>
+                )}
+              </div>
+              {n.body && <p className="text-sm text-muted mt-1">{n.body}</p>}
+            </li>
+          ))}
+        </ul>
+      )
+    })()}
+  </section>
+)}
 
       {/* Por qué elegirnos */}
       <section aria-labelledby="why-heading">
@@ -232,30 +236,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Horarios (settings) */}
-      <section aria-labelledby="horarios-heading">
-        <h2 id="horarios-heading" className="text-2xl font-semibold mb-3">
-          Horarios
-        </h2>
-
-        {hours.length === 0 ? (
-          <p className="text-gray-600">Próximamente horarios.</p>
-        ) : (
-          <table className="w-full border-separate border-spacing-y-2">
-            <tbody>
-              {hours.map((h, i) => (
-                <tr key={i} className="bg-white rounded-xl border">
-                  <td className="p-3 font-medium w-1/3">{diaES(h.dayOfWeek)}</td>
-                  <td className="p-3 text-gray-700">
-                    {h.opens} – {h.closes}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
+      <OpeningHours hours= {hours} />
+      
       <Reviews />
 
       {/* CTA final */}
@@ -275,7 +257,7 @@ export default async function HomePage() {
             Ver menú
           </Link>
           <Link
-            href="/contacto"
+            href="/acerca"
             className="btn btn-lg border-white text-white hover:bg-white hover:text-[--espresso]"
           >
             Cómo llegar

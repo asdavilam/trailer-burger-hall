@@ -1,8 +1,9 @@
-import './globals.css'
+import '@/app/globals.css'
 import { Inter, Cinzel, Montserrat } from 'next/font/google'
 import Header from './components/Header' // ajusta la ruta si tu alias es distinto
 import SWRegister from './components/SWRegister'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
+import Footer from './components/Footer'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 const cinzel = Cinzel({
@@ -42,11 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
-        <footer className="bg-gray-900 text-gray-200">
-          <div className="container mx-auto p-4 text-center text-sm">
-            © {new Date().getFullYear()} Trailer Burger Hall · Todos los derechos reservados
-          </div>
-        </footer>
+        <Footer />
         <SWRegister />
         <PWAInstallPrompt />
       </body>
