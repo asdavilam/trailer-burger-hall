@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import Image from "next/image"
-import { motion } from "framer-motion"
-import { Cinzel } from "next/font/google"
+import Image from 'next/image'
+import { motion } from 'framer-motion'
+import { Cinzel } from 'next/font/google'
 
-const cinzel = Cinzel({ subsets: ["latin"], weight: ["700"], display: "swap" })
+const cinzel = Cinzel({ subsets: ['latin'], weight: ['700'], display: 'swap' })
 
 export default function Hero() {
   return (
@@ -25,10 +25,12 @@ export default function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
           className="relative z-10 h-full flex flex-col items-center justify-center text-center p-6"
         >
-          <h1 className={`${cinzel.className} text-4xl sm:text-5xl font-bold text-white drop-shadow-sm`}>
+          <h1
+            className={`${cinzel.className} text-4xl sm:text-5xl font-bold text-white drop-shadow-sm`}
+          >
             Trailer Burger Hall
           </h1>
           <p className="mt-3 text-base sm:text-lg text-white/90">

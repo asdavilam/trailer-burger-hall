@@ -1,34 +1,28 @@
-"use client"
+'use client'
 import { motion } from 'framer-motion'
 
 export default function Reviews() {
   const reviews = [
     {
       author: 'Carlos M.',
-      text:
-        'Las mejores hamburguesas que he probado, el sabor es único y se nota lo artesanal.',
+      text: 'Las mejores hamburguesas que he probado, el sabor es único y se nota lo artesanal.',
       rating: 5,
     },
     {
       author: 'Ana G.',
-      text:
-        'El lugar perfecto para venir con amigos, el menú es variado y todo está delicioso.',
+      text: 'El lugar perfecto para venir con amigos, el menú es variado y todo está delicioso.',
       rating: 5,
     },
     {
       author: 'Luis R.',
-      text:
-        'El servicio es excelente y las promociones de la semana valen mucho la pena.',
+      text: 'El servicio es excelente y las promociones de la semana valen mucho la pena.',
       rating: 5,
     },
   ]
 
   return (
     <section aria-labelledby="reviews-heading" className="space-y-6">
-      <h2
-        id="reviews-heading"
-        className="text-2xl font-semibold text-center text-[#3B1F1A]"
-      >
+      <h2 id="reviews-heading" className="text-2xl font-semibold text-center text-[#3B1F1A]">
         Lo que dicen nuestros clientes
       </h2>
 
@@ -36,7 +30,7 @@ export default function Reviews() {
         {reviews.map((r, i) => (
           <motion.figure
             key={i}
-            whileHover={{ y: -4}}
+            whileHover={{ y: -4 }}
             className="rounded-2xl bg-white border border-[#F6F1E7] shadow p-6 h-full"
           >
             {/* Estrellas accesibles (decorativas) */}
