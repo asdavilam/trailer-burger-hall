@@ -14,6 +14,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+// ✅ Type guard compatible con tu firma existente en src/lib/ga.ts
+function hasGtag(
+  w: Window
+): w is Window & {
+  gtag: (command: 'event', eventName: string, params?: Record<string, unknown>) => void
+} {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return typeof (w as any).gtag === 'function'
+}
+
 export default function ContactForm() {
   const [values, setValues] = useState<FormValues>({
     name: '',
@@ -42,7 +52,7 @@ export default function ContactForm() {
     setValues((prev) => ({ ...prev, [key]: v }))
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!canSubmit) return
 
@@ -73,29 +83,28 @@ export default function ContactForm() {
       })
 
       if (res.status === 429) {
-        const data = await res.json().catch(() => ({}))
+        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
         setStatus(data?.error === 'too_fast' ? 'fast' : 'ratelimited')
         return
       }
+
       if (!res.ok) {
-  let data: any = null;
-  try {
-    data = await res.json();
-  } catch {
-    const text = await res.text().catch(() => '');
-    data = text ? { raw: text } : {};
-  }
-  console.error('[feedback] client error', res.status, data);
-  setStatus(res.status === 429 ? 'ratelimited' : 'error');
-  return;
-}
+        let data: unknown = null
+        try {
+          data = await res.json()
+        } catch {
+          const text = await res.text().catch(() => '')
+          data = text ? { raw: text } : {}
+        }
+        console.error('[feedback] client error', res.status, data)
+        setStatus(res.status === 429 ? 'ratelimited' : 'error')
+        return
+      }
 
       setStatus('ok')
 
-      // GA4 opcional
-      // @ts-ignore
-      if (typeof window !== 'undefined' && window.gtag) {
-        // @ts-ignore
+      // ✅ GA4 sin redeclarar window.gtag ni ts-ignore, compatible con src/lib/ga.ts
+      if (typeof window !== 'undefined' && hasGtag(window)) {
         window.gtag('event', 'feedback_submitted', {
           feedback_type: values.type,
           has_order_ref: Boolean(values.order_ref),

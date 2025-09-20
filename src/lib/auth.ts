@@ -1,6 +1,11 @@
 import { redirect } from 'next/navigation'
 import { supabaseServer } from './supabaseServer'
 
+type AppMetadata = {
+  role?: string
+  [key: string]: unknown
+}
+
 export async function getSessionUser() {
   const supabase = await supabaseServer()
   const { data, error } = await supabase.auth.getUser()
@@ -15,7 +20,7 @@ export async function requireAdmin() {
     redirect('/admin/login?next=/admin')
   }
 
-  const role = (user.app_metadata as any)?.role
+  const role = (user.app_metadata as AppMetadata)?.role
   if (role !== 'admin') {
     // con sesión pero sin rol admin → fuera (home, por ejemplo)
     redirect('/')

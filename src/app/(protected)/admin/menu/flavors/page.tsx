@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { toggleFlavorActive, deleteFlavor } from './actions'
+import { toggleFlavorActive } from './actions'
 import ConfirmSubmit from '@/app/components/admin/ConfirmSubmit'
 
 type Row = {

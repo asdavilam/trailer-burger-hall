@@ -1,5 +1,6 @@
 // next.config.ts
 import withPWAInit from 'next-pwa'
+import type { NextConfig } from 'next'
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -17,8 +18,29 @@ const withPWA = withPWAInit({
   buildExcludes: [/app-build-manifest\.json$/],
 })
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // 👇 Habilita importar SVG como componentes React (SVGR)
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.svg$/i,
+      issuer: /\.[jt]sx?$/,
+      use: [
+        {
+          loader: '@svgr/webpack',
+          options: {
+            svgo: true,
+            // Mantén viewBox para que los iconos escalen correctamente
+            svgoConfig: { plugins: [{ name: 'removeViewBox', active: false }] },
+            titleProp: true,
+            ref: true,
+          },
+        },
+      ],
+    })
+    return config
+  },
 }
 
 export default withPWA(nextConfig)

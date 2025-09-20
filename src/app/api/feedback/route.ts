@@ -6,6 +6,34 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
+// Tipos auxiliares para evitar any
+type ResendSendResult = {
+  data: { id: string } | null
+  error: { message: string } | null
+}
+
+type FeedbackIdRow = { id: string }
+
+type EmailLogInsert = {
+  kind: 'feedback_admin' | 'feedback_ack'
+  to_email: string
+  subject: string
+  status: 'sent' | 'error' | 'skipped'
+  message_id?: string | null
+  error?: string | null
+  payload?: Record<string, unknown>
+}
+
+// Helper de errores en catches
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message
+  try {
+    return JSON.stringify(e)
+  } catch {
+    return String(e)
+  }
+}
+
 // —— Validación ————————————————————————————————————————
 const schema = z.object({
   name: z.string().min(2),
@@ -83,7 +111,7 @@ export async function POST(req: Request) {
     const normMsg = message.trim();
 
     // —— Inserción en BD ————————————————————————————————————
-    const { data: inserted, error: insErr } = await supabase
+    const { data: insertedRow, error: insErr } = await supabase
       .from('feedback')
       .insert({
         name,
@@ -92,10 +120,10 @@ export async function POST(req: Request) {
         type,
         order_ref: normOrder,
         message: normMsg,
-        //status: 'new',
+        // status: 'new',
       })
-      .select()
-      .single();
+      .select('id')
+      .single<FeedbackIdRow>();
 
     if (insErr) {
       console.error('[feedback] insert error', insErr);
@@ -106,7 +134,6 @@ export async function POST(req: Request) {
     }
 
     // —— Emails ——————————————————————————————————————————————
-    // Si tienes Resend configurado y un remitente verificado, enviamos:
     if (resendKey && emailFrom) {
       const resend = new Resend(resendKey);
 
@@ -127,27 +154,25 @@ export async function POST(req: Request) {
       let adminErrMsg: string | null = null;
 
       try {
-        const adminRes = await resend.emails.send({
+        const adminRes = (await resend.emails.send({
           from: emailFrom,
           to: emailTo,
           subject: adminSubject,
           html: adminHtml,
-          // Opcional: que el botón “Responder” vaya al cliente:
           replyTo: email,
-        });
+        })) as ResendSendResult;
 
-        if ('error' in adminRes && adminRes.error) {
+        if (adminRes.error) {
           adminStatus = 'error';
           adminErrMsg = adminRes.error.message;
         } else {
-          // @ts-ignore
           adminMsgId = adminRes.data?.id ?? null;
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         adminStatus = 'error';
-        adminErrMsg = e?.message ?? 'send_failed';
+        adminErrMsg = getErrorMessage(e);
       } finally {
-        await supabase.from('email_log').insert({
+        const logRow: EmailLogInsert = {
           kind: 'feedback_admin',
           to_email: emailTo,
           subject: adminSubject,
@@ -155,7 +180,8 @@ export async function POST(req: Request) {
           message_id: adminMsgId,
           error: adminErrMsg,
           payload: { name, email, phone: normPhone, type, order_ref: normOrder },
-        });
+        };
+        await supabase.from('email_log').insert(logRow);
       }
 
       // 2) Auto-reply al cliente
@@ -173,26 +199,25 @@ export async function POST(req: Request) {
       let userErrMsg: string | null = null;
 
       try {
-        const userRes = await resend.emails.send({
+        const userRes = (await resend.emails.send({
           from: emailFrom,
-          to: email,            // 👈 se envía al cliente
+          to: email, // se envía al cliente
           subject: userSubject,
           html: userHtml,
-          replyTo: emailTo,    // si responde, te llega a tu inbox
-        });
+          replyTo: emailTo, // si responde, llega al inbox del negocio
+        })) as ResendSendResult;
 
-        if ('error' in userRes && userRes.error) {
+        if (userRes.error) {
           userStatus = 'error';
           userErrMsg = userRes.error.message;
         } else {
-          // @ts-ignore
           userMsgId = userRes.data?.id ?? null;
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         userStatus = 'error';
-        userErrMsg = e?.message ?? 'send_failed';
+        userErrMsg = getErrorMessage(e);
       } finally {
-        await supabase.from('email_log').insert({
+        const logRow: EmailLogInsert = {
           kind: 'feedback_ack',
           to_email: email,
           subject: userSubject,
@@ -200,11 +225,12 @@ export async function POST(req: Request) {
           message_id: userMsgId,
           error: userErrMsg,
           payload: { name, type },
-        });
+        };
+        await supabase.from('email_log').insert(logRow);
       }
     } else {
       // Sin Resend configurado: dejamos registro "skipped"
-      await supabase.from('email_log').insert([
+      const logs: EmailLogInsert[] = [
         {
           kind: 'feedback_admin',
           to_email: emailTo,
@@ -217,14 +243,15 @@ export async function POST(req: Request) {
           subject: 'Gracias por contactarnos — Trailer Burger Hall 🍔',
           status: 'skipped',
         },
-      ]);
+      ];
+      await supabase.from('email_log').insert(logs);
     }
 
-    return NextResponse.json({ ok: true, id: inserted.id });
-  } catch (e: any) {
+    return NextResponse.json({ ok: true, id: insertedRow!.id });
+  } catch (e: unknown) {
     console.error('[feedback] route error', e);
     return NextResponse.json(
-      { ok: false, error: 'server_error', detail: e?.message ?? 'unknown' },
+      { ok: false, error: 'server_error', detail: getErrorMessage(e) },
       { status: 500 }
     );
   }

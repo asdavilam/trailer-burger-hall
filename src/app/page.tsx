@@ -1,3 +1,4 @@
+// src/app/page.tsx
 import { getHomeData } from '@/lib/data'
 import { Montserrat } from 'next/font/google'
 import Reviews from './components/Reviews'
@@ -5,7 +6,6 @@ import Script from 'next/script'
 import Hero from './components/Hero'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Clock } from 'lucide-react'
 import OpeningHours from './components/OpeningHours'
 
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['400'], display: 'swap' })
@@ -33,19 +33,6 @@ type SettingsRow = {
     opening_hours?: Array<{ dayOfWeek: string; opens: string; closes: string }>
     social?: Record<string, string>
   }
-}
-
-function diaES(eng: string) {
-  const map: Record<string, string> = {
-    Monday: 'Lunes',
-    Tuesday: 'Martes',
-    Wednesday: 'Miércoles',
-    Thursday: 'Jueves',
-    Friday: 'Viernes',
-    Saturday: 'Sábado',
-    Sunday: 'Domingo',
-  }
-  return map[eng] ?? eng
 }
 
 export default async function HomePage() {
@@ -77,85 +64,85 @@ export default async function HomePage() {
       <Hero />
 
       {/* Avisos vigentes */}
-{activeNotices.length > 0 && (
-  <section aria-labelledby="avisos-heading">
-    <h2 id="avisos-heading" className="font-display text-xl tracking-wide mb-3">
-      Avisos
-    </h2>
+      {activeNotices.length > 0 && (
+        <section aria-labelledby="avisos-heading">
+          <h2 id="avisos-heading" className="font-display text-xl tracking-wide mb-3">
+            Avisos
+          </h2>
 
-    {(() => {
-      const noticesWithImage = activeNotices.filter((n) => !!n.image_url)
-      const useCarousel = noticesWithImage.length >= 2
+          {(() => {
+            const noticesWithImage = activeNotices.filter((n) => !!n.image_url)
+            const useCarousel = noticesWithImage.length >= 2
 
-      if (useCarousel) {
-        // Carrusel sin JS con scroll-snap
-        return (
-          <div className="overflow-x-auto pb-2 -mx-4 px-4">
-            <div className="flex gap-4 snap-x snap-mandatory">
-              {noticesWithImage.map((n) => (
-                <article
-                  key={n.id}
-                  className="min-w-[280px] md:min-w-[360px] snap-start rounded-xl border bg-white p-3 shadow-sm"
-                >
-                  <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-3">
-                    <Image
-                      src={n.image_url as string}
-                      alt={n.title}
-                      fill
-                      sizes="(max-width: 768px) 280px, 360px"
-                      className="object-cover"
-                      unoptimized
-                    />
+            if (useCarousel) {
+              // Carrusel sin JS con scroll-snap
+              return (
+                <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                  <div className="flex gap-4 snap-x snap-mandatory">
+                    {noticesWithImage.map((n) => (
+                      <article
+                        key={n.id}
+                        className="min-w-[280px] md:min-w-[360px] snap-start rounded-xl border bg-white p-3 shadow-sm"
+                      >
+                        <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-3">
+                          <Image
+                            src={n.image_url as string}
+                            alt={n.title}
+                            fill
+                            sizes="(max-width: 768px) 280px, 360px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="font-semibold leading-snug line-clamp-2">{n.title}</h3>
+                          {typeof n.priority === 'number' && (
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border border-[--accent] text-[--espresso]/80">
+                              Prioridad {n.priority}
+                            </span>
+                          )}
+                        </div>
+                        {n.body && <p className="text-sm text-muted mt-1 line-clamp-3">{n.body}</p>}
+                      </article>
+                    ))}
                   </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold leading-snug line-clamp-2">{n.title}</h3>
-                    {typeof n.priority === 'number' && (
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border border-[--accent] text-[--espresso]/80">
-                        Prioridad {n.priority}
-                      </span>
-                    )}
-                  </div>
-                  {n.body && <p className="text-sm text-muted mt-1 line-clamp-3">{n.body}</p>}
-                </article>
-              ))}
-            </div>
-          </div>
-        )
-      }
-
-      // Lista de tarjetas (1 sola imagen o solo texto)
-      return (
-        <ul className="grid gap-4 md:grid-cols-2">
-          {activeNotices.map((n) => (
-            <li key={n.id} className="rounded-xl border bg-white p-4 shadow-sm">
-              {n.image_url ? (
-                <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-3">
-                  <Image
-                    src={n.image_url}
-                    alt={n.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
-                    unoptimized
-                  />
                 </div>
-              ) : null}
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="font-semibold leading-snug">{n.title}</h3>
-                {typeof n.priority === 'number' && (
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border border-[--accent] text-[--espresso]/80">
-                    Prioridad {n.priority}
-                  </span>
-                )}
-              </div>
-              {n.body && <p className="text-sm text-muted mt-1">{n.body}</p>}
-            </li>
-          ))}
-        </ul>
-      )
-    })()}
-  </section>
-)}
+              )
+            }
+
+            // Lista de tarjetas (1 sola imagen o solo texto)
+            return (
+              <ul className="grid gap-4 md:grid-cols-2">
+                {activeNotices.map((n) => (
+                  <li key={n.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                    {n.image_url ? (
+                      <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-3">
+                        <Image
+                          src={n.image_url}
+                          alt={n.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    ) : null}
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-semibold leading-snug">{n.title}</h3>
+                      {typeof n.priority === 'number' && (
+                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border border-[--accent] text-[--espresso]/80">
+                          Prioridad {n.priority}
+                        </span>
+                      )}
+                    </div>
+                    {n.body && <p className="text-sm text-muted mt-1">{n.body}</p>}
+                  </li>
+                ))}
+              </ul>
+            )
+          })()}
+        </section>
+      )}
 
       {/* Por qué elegirnos */}
       <section aria-labelledby="why-heading">
@@ -236,8 +223,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <OpeningHours hours= {hours} />
-      
+      <OpeningHours hours={hours} />
+
       <Reviews />
 
       {/* CTA final */}

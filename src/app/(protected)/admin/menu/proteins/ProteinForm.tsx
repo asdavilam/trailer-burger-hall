@@ -1,7 +1,6 @@
 // ✅ ProteinForm.tsx — Server Component (sin 'use client')
 
-// ❌ Quitar este import porque no se usa aquí
-// import ConfirmSubmit from '@/app/components/admin/ConfirmSubmit'
+type ProteinCategory = (typeof CATEGORIES)[number]
 
 type ProteinFormProps = {
   mode: 'new' | 'edit'
@@ -10,7 +9,8 @@ type ProteinFormProps = {
     name: string
     description?: string | null
     price_base: number
-    available: boolean,
+    available: boolean
+    category?: ProteinCategory
   }
 }
 
@@ -60,9 +60,9 @@ export default function ProteinForm({ mode, initial }: ProteinFormProps) {
         <select
           name="category"
           className="input"
-          defaultValue={(initial as any)?.category ?? CATEGORIES[0]}
+          defaultValue={initial?.category ?? CATEGORIES[0]}
         >
-          {CATEGORIES.map(c => (
+          {CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>

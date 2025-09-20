@@ -14,7 +14,10 @@ export async function logout() {
   // Intenta cerrar sesión en Supabase (ignora errores para evitar loops)
   try {
     await supabase.auth.signOut()
-  } catch {}
+  } catch (err) {
+    // Ignorar error de signOut, pero mantenemos bloque no vacío para ESLint
+    console.warn('[logout] Error al cerrar sesión en Supabase:', err)
+  }
 
   // (Opcional) Limpia cookies sb-* para evitar estados zombie
   const jar = await cookies()

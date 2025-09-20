@@ -2,7 +2,7 @@
 'use client'
 
 type HourRow = {
-  dayOfWeek: string // ej: "Monday" | "Tuesday" ... (como lo guardas en settings)
+  dayOfWeek: string // ej: "Monday" | "Tuesday" ...
   opens: string     // "16:00"
   closes: string    // "22:30"
 }
@@ -85,6 +85,12 @@ function isToday(engDay: string, now = new Date()) {
   return names[idx] === engDay
 }
 
+function formatHHMM(hhmm: string) {
+  const [h, m] = hhmm.split(':').map((x) => Number(x))
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm
+  return `${pad(h)}:${pad(m)}`
+}
+
 function openStatusForToday(hours: HourRow[], now = new Date()) {
   const names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
   const todayEng = names[now.getDay()]
@@ -94,11 +100,11 @@ function openStatusForToday(hours: HourRow[], now = new Date()) {
   const minsNow = now.getHours() * 60 + now.getMinutes()
   const o = hhmmToMinutes(row.opens)
   const c = hhmmToMinutes(row.closes)
-  if (o == null || c == null) return { open: false, label: `${row.opens} – ${row.closes}` }
+  if (o == null || c == null) return { open: false, label: `${formatHHMM(row.opens)} – ${formatHHMM(row.closes)}` }
 
   const open = minsNow >= o && minsNow < c
-  const closesAt = `${row.closes} h`
-  const opensAt  = `${row.opens} h`
+  const closesAt = `${formatHHMM(row.closes)} h`
+  const opensAt  = `${formatHHMM(row.opens)}  h`
   return {
     open,
     label: open ? `Cierra ${closesAt}` : `Abre ${opensAt}`,
@@ -161,7 +167,7 @@ export default function OpeningHours({ hours }: { hours: HourRow[] }) {
               </div>
 
               <div className="tabular-nums text-[15px] text-gray-800">
-                {h.opens} – {h.closes}
+                {formatHHMM(h.opens)} – {formatHHMM(h.closes)}
               </div>
             </li>
           )

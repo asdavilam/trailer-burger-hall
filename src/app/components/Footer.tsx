@@ -1,4 +1,4 @@
-import Image from 'next/image'
+// src/app/components/Footer.tsx
 import { getHomeData } from '@/lib/data'
 
 type SettingsValue = {
@@ -10,6 +10,53 @@ type SettingsValue = {
   social?: Record<string, string>
 }
 
+/** Ícono re-coloreable usando CSS mask con un .svg en /public/icons */
+function IconMask({
+  href,
+  src,          // e.g. "/icons/facebook.svg"
+  label,
+  size = 22,
+  color = '#F6F1E7', // color claro por tu footer oscuro
+}: {
+  href: string
+  src: string
+  label: string
+  size?: number
+  color?: string
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="inline-flex items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C08A3E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#3B1F1A]"
+      style={{
+        width: size,
+        height: size,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: size,
+          height: size,
+          display: 'inline-block',
+          backgroundColor: color,
+          WebkitMaskImage: `url(${src})`,
+          maskImage: `url(${src})`,
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+        }}
+      />
+    </a>
+  )
+}
+
 export default async function Footer() {
   const { settings } = await getHomeData()
   const s = (settings as SettingsValue) ?? {}
@@ -18,11 +65,11 @@ export default async function Footer() {
   return (
     <footer className="mt-16 border-t border-[#C08A3E]/20 bg-[#3B1F1A] text-[#F6F1E7]" role="contentinfo">
       <div className="mx-auto max-w-6xl px-4 py-10 flex flex-col md:flex-row items-center justify-between gap-8">
-        
         {/* Marca + tagline */}
         <div className="flex flex-col items-center md:items-start text-center md:text-left gap-2">
           <div className="flex items-center gap-2">
-            <Image
+            {/* si quieres seguir mostrando el PNG del logo */}
+            <img
               src="/icons/logo.png"
               alt={s.restaurant_name ?? 'Trailer Burger Hall'}
               width={70}
@@ -38,23 +85,32 @@ export default async function Footer() {
           </p>
         </div>
 
-        {/* Redes sociales */}
+        {/* Redes sociales — usa IconMask con las rutas en /public/icons/*.svg */}
         {Object.keys(social).length > 0 && (
-          <div className="flex gap-4">
+          <div className="flex gap-5">
             {social.instagram && (
-              <a href={social.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                <Image src="/icons/instagram.svg" alt="Instagram" width={20} height={20} />
-              </a>
+              <IconMask
+                href={social.instagram}
+                src="/icons/instagram.svg"
+                label="Instagram"
+                // color y size opcionales:
+                // color="#F6F1E7"
+                // size={22}
+              />
             )}
             {social.facebook && (
-              <a href={social.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                <Image src="/icons/facebook.svg" alt="Facebook" width={20} height={20} />
-              </a>
+              <IconMask
+                href={social.facebook}
+                src="/icons/facebook.svg"
+                label="Facebook"
+              />
             )}
             {social.whatsapp && (
-              <a href={`https://wa.me/${s.whatsapp?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
-                <Image src="/icons/whatsapp.svg" alt="WhatsApp" width={20} height={20} />
-              </a>
+              <IconMask
+                href={`https://wa.me/${(s.whatsapp ?? '').replace(/\D/g, '')}`}
+                src="/icons/whatsapp.svg"
+                label="WhatsApp"
+              />
             )}
           </div>
         )}

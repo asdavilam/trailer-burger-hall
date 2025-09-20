@@ -1,3 +1,6 @@
+// src/app/offline/page.tsx
+import Link from 'next/link'
+
 export const metadata = {
   title: 'Sin conexión — Trailer Burger Hall',
 }
@@ -11,12 +14,12 @@ export default function OfflinePage() {
           No pudimos cargar la página. Intenta nuevamente cuando tengas internet.
         </p>
         <div className="mt-6 flex justify-center">
-          <a
+          <Link
             href="/"
             className="rounded-lg bg-[#6B8E62] px-5 py-2 font-semibold text-white hover:bg-[#C08A3E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C08A3E] focus-visible:ring-offset-2"
           >
             Volver al inicio
-          </a>
+          </Link>
         </div>
       </div>
     </main>

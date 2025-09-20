@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
-  calcBurgerPriceClassic,
   calcHouseBurgerPrice,
   calcTorrePrice,
   calcPapasItalianasPrice,
 } from '@/lib/pricing'
 
-type VariantKind = 'normal' | 'double' | 'light' | 'casa' | 'torre'
+type VariantKind = 'normal' | 'doble' | 'light' | 'casa' | 'torre'
 
 type Protein = {
   id: string
@@ -29,8 +28,14 @@ type Flavor = {
 }
 
 type Extra = { id: string; name: string; price: number }
-
 type PapasCfg = { basePrice: number; allowFlavors: boolean; flavorExtraNormal: number } | null
+
+// ✅ Tipo para las entradas de houseMap (evita `any`)
+type HouseEntry = {
+  price?: number
+  includedIds?: string[]
+  default_flavors_json?: { secondary?: string[] }
+} | undefined
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="px-2 py-0.5 rounded-full text-xs border">{children}</span>
@@ -50,7 +55,7 @@ export default function SimulatorClient(props: {
   flavors: Flavor[]
   flavorsMap: Record<string, Flavor>
   defaultsMap: Record<string, string[]>
-  houseMap: Record<string, { price: number; includedIds: string[] }>
+  houseMap: Record<string, HouseEntry>
   torreMap: Record<string, number>
   papasCfg: PapasCfg
 }) {
@@ -64,78 +69,210 @@ export default function SimulatorClient(props: {
   const [simulatePapas, setSimulatePapas] = useState(false)
   const [papasFlavorIds, setPapasFlavorIds] = useState<string[]>([])
 
-  // (Opcional) extras mock si aún no los traes por API
+  // Extras mock
   const EXTRAS: Extra[] = [
     { id: 'queso', name: 'Queso', price: 10 },
     { id: 'tocino', name: 'Tocino', price: 20 },
     { id: 'carne', name: 'Carne extra', price: 50 },
   ]
 
-  // defaults por proteína (Camarón/Salmon => Diabla+Mojo, Portobello => Chimi+Mojo)
-  const defaultFlavorIds = defaultsMap[proteinId] ?? []
+  // ✅ Memoriza los defaults para evitar advertencias de hooks
+  const defaultFlavorIds = useMemo(
+    () => defaultsMap[proteinId] ?? [],
+    [defaultsMap, proteinId],
+  )
 
-  // al cambiar de proteína, reseteamos sabores seleccionados para que tenga sentido la UI
+  // Al cambiar de proteína, carga los defaults base
   useEffect(() => {
     setSelectedFlavorIds(defaultFlavorIds)
-  }, [proteinId])
+  }, [proteinId, defaultFlavorIds])
 
-  const protein = useMemo(() => proteins.find((p) => p.id === proteinId)!, [proteinId, proteins])
+  const protein = useMemo(
+    () => proteins.find((p) => p.id === proteinId) ?? null,
+    [proteinId, proteins],
+  )
+
+  // --- nombre -> id de sabores (case-insensitive) ---
+  const flavorIdByName = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const f of flavors) map.set(f.name.trim().toLowerCase(), f.id)
+    return map
+  }, [flavors])
+
+  // --- helper: IDs únicos por NOMBRE (evita duplicados si hay dos filas con mismo nombre) ---
+  const uniqueByName = (ids: string[]) => {
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const id of ids) {
+      const nm = (flavorsMap[id]?.name ?? '').trim().toLowerCase()
+      if (!nm) continue
+      if (!seen.has(nm)) {
+        seen.add(nm)
+        out.push(id)
+      }
+    }
+    return out
+  }
+
+  // --- Resolver regla "Casa" (IDs reales + precio) según protein seleccionada ---
+  const houseRule = useMemo(() => {
+    const entry = houseMap?.[proteinId]
+    if (!entry) return null
+
+    const price = Number(entry.price ?? 0)
+
+    // 1) Si ya vienen IDs en entry.includedIds, los normalizamos y luego DEDUP por nombre
+    if (Array.isArray(entry.includedIds) && entry.includedIds.length) {
+      const cleanIds = entry.includedIds.filter(Boolean)
+      const includedIds = uniqueByName(cleanIds)
+      if (!includedIds.length && !price) return null
+      return { price, includedIds }
+    }
+
+    // 2) Armar por nombres desde JSON + reglas adicionales y mapear a IDs
+    const collectedNames: string[] = []
+    const secondary = entry?.default_flavors_json?.secondary
+    if (Array.isArray(secondary)) collectedNames.push(...secondary)
+
+    const pname = (protein?.name ?? '').toLowerCase()
+    const isResPollo = pname.includes('res') || pname.includes('pollo')
+    const isMar =
+      pname.includes('camarón') || pname.includes('camaron') || pname.includes('salmón') || pname.includes('salmon')
+
+    if (isResPollo) collectedNames.push('Habanero', 'Chimi', 'Mojo')
+    if (isMar) collectedNames.push('Chimi', 'Mojo', 'Diabla')
+
+    const initialIds = collectedNames
+      .map((n) => flavorIdByName.get(String(n).trim().toLowerCase()))
+      .filter(Boolean) as string[]
+
+    const includedIds = uniqueByName(initialIds)
+    if (!includedIds.length && !price) return null
+    return { price, includedIds }
+  }, [houseMap, proteinId, protein?.name, flavorIdByName, flavorsMap])
+
+  const hasCasa = !!houseRule
+
+  // Set para contains rápido (derivado de IDs ya únicos por nombre)
+  const houseIncludedSet = useMemo(
+    () => new Set(houseRule?.includedIds ?? []),
+    [houseRule]
+  )
+
+  // --- Al cambiar de variante:
+  //     * Casa  -> preselecciona EXACTAMENTE los incluidos (únicos por nombre)
+  //     * Otras -> restaura los defaults base
+  useEffect(() => {
+    if (variant === 'casa') {
+      if (houseRule) setSelectedFlavorIds(Array.from(houseIncludedSet))
+    } else {
+      setSelectedFlavorIds(defaultFlavorIds)
+    }
+  }, [variant, proteinId, houseRule, houseIncludedSet, defaultFlavorIds])
 
   // --------- cálculo de precios ---------
   const burgerPricing = useMemo(() => {
     if (!protein) return null
 
-    // ¿Es "Casa"? (cuando el usuario elige esa modalidad desde variant)
+    // 1) Casa
     if (variant === 'casa') {
-      const entry = houseMap[proteinId]
-      if (!entry) return null
-      return calcHouseBurgerPrice({
-        housePrice: entry.price,
-        includedFlavorIds: entry.includedIds, // vienen desde BD
-        selectedFlavorIds,
+      if (!houseRule) return null
+
+      // No cobramos los incluidos (por ID)
+      const selectedExcludingIncluded = selectedFlavorIds.filter(
+        (id) => !houseIncludedSet.has(id),
+      )
+
+      const pricing = calcHouseBurgerPrice({
+        housePrice: Number(houseRule.price),
+        includedFlavorIds: Array.from(houseIncludedSet), // únicos por nombre
+        selectedFlavorIds: selectedExcludingIncluded,
         flavorsMap,
         extras: selectedExtras,
       })
+
+      // Resumen: incluidos únicos por nombre
+      return {
+        ...pricing,
+        flavorsIncluded: Array.from(houseIncludedSet),
+      }
     }
 
-    // ¿Es Torre?
+    // 2) Torre
     if (variant === 'torre') {
       const price = protein.name.toLowerCase().includes('doble')
         ? (torreMap['Torre Doble'] ?? 130)
         : (torreMap['Torre Pizza'] ?? 100)
       return calcTorrePrice({
         torrePrice: price,
-        addedFlavorIds: selectedFlavorIds, // sabores opcionales a Torre
+        addedFlavorIds: selectedFlavorIds,
         flavorsMap,
         extras: selectedExtras,
       })
     }
 
-    // Clásica
-    return calcBurgerPriceClassic({
-      protein,
-      variant,
-      selectedFlavorIds,
-      defaultFlavorIds, // si hay defaults, esos se incluyen gratis
-      flavorsMap,
-      extras: selectedExtras,
+    // 3) Clásica (normal/doble/light): DB-first
+    const base =
+      variant === 'doble'
+        ? protein.price_double
+        : variant === 'light'
+        ? protein.price_light
+        : protein.price_base
+
+    // Sabores incluidos (base)
+    const selected = selectedFlavorIds
+    let flavorsIncludedIds: string[] = []
+    if (defaultFlavorIds.length > 0) {
+      const defaultsSet = new Set(defaultFlavorIds)
+      flavorsIncludedIds = selected.filter((id) => defaultsSet.has(id))
+    } else {
+      const freeCount = variant === 'doble' ? 2 : 1
+      flavorsIncludedIds = selected.slice(0, freeCount)
+    }
+
+    // Sabores cobrados
+    const includedSet = new Set(flavorsIncludedIds)
+    const flavorsChargedIds = selected.filter((id) => !includedSet.has(id))
+    const flavorsCharged = flavorsChargedIds.map((id) => {
+      const f = flavorsMap[id]
+      const amount =
+        typeof f?.price_extra === 'number'
+          ? f.price_extra
+          : f?.intensity === 'extremo'
+          ? 10
+          : 5
+      return { id, amount }
     })
+    const flavorsCost = flavorsCharged.reduce((s, x) => s + x.amount, 0)
+
+    // Extras
+    const extras = selectedExtras.map((e) => ({ id: e.id, amount: e.price }))
+    const extrasCost = extras.reduce((s, x) => s + x.amount, 0)
+
+    return {
+      base,
+      total: base + flavorsCost + extrasCost,
+      flavorsIncluded: flavorsIncludedIds,
+      flavorsCharged,
+      extras,
+    }
   }, [
     protein,
+    proteinId,
     variant,
     selectedFlavorIds,
     defaultFlavorIds,
     selectedExtras,
     flavorsMap,
-    houseMap,
+    houseRule,
+    houseIncludedSet,
     torreMap,
-    proteinId,
   ])
 
   const papasPricing = useMemo(() => {
     if (!simulatePapas || !papasCfg) return null
     return calcPapasItalianasPrice({
-      basePrice: papasCfg.basePrice, // 45 (en tu seed)
+      basePrice: papasCfg.basePrice,
       flavorIds: papasFlavorIds,
       flavorsMap,
     })
@@ -156,7 +293,7 @@ export default function SimulatorClient(props: {
   const togglePapasFlavor = (id: string) =>
     setPapasFlavorIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
-  // ordenar sabores por grupo (picante/dulce/salado)
+  // ordenar sabores por grupo
   const flavorsByGroup = useMemo(() => {
     const groups: Record<string, Flavor[]> = { Picante: [], Dulce: [], Salado: [], Otros: [] }
     for (const f of flavors) {
@@ -170,6 +307,12 @@ export default function SimulatorClient(props: {
     return groups
   }, [flavors])
 
+  // Para el chip "Incluido": en Casa usamos Set de incluidos, en otras los defaults base
+  const isIncludedForUI = (flavorId: string) =>
+    variant === 'casa'
+      ? houseIncludedSet.has(flavorId)
+      : defaultFlavorIds.includes(flavorId)
+
   return (
     <div className="grid gap-6">
       {/* Selección principal */}
@@ -180,9 +323,10 @@ export default function SimulatorClient(props: {
               <button
                 key={p.id}
                 onClick={() => setProteinId(p.id)}
-                className={`btn w-full text-left ${
+                className={`btn w-full text-left border ${
                   proteinId === p.id ? 'border-amber-600 bg-amber-50' : 'hover:bg-gray-50'
                 }`}
+                aria-pressed={proteinId === p.id}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{p.name}</span>
@@ -195,27 +339,36 @@ export default function SimulatorClient(props: {
 
         <Card title="2) Variante">
           <div className="grid grid-cols-2 gap-2">
-            {(['normal', 'double', 'light', 'casa', 'torre'] as VariantKind[]).map((v) => (
+            {(['normal', 'doble', 'light', 'casa', 'torre'] as VariantKind[]).map((v) => (
               <button
                 key={v}
-                onClick={() => setVariant(v)}
+                onClick={() => {
+                  if (v === 'casa' && !hasCasa) return
+                  setVariant(v)
+                }}
                 className={`px-3 py-2 rounded-xl border ${
                   variant === v ? 'border-amber-600 bg-amber-50' : 'hover:bg-gray-50'
                 }`}
+                aria-disabled={v === 'casa' && !hasCasa}
+                disabled={v === 'casa' && !hasCasa}
               >
                 <span className="capitalize">{v}</span>
               </button>
             ))}
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            {defaultFlavorIds.length > 0 ? (
+            {variant === 'casa' && houseRule ? (
+              <p>
+                Casa incluye: <strong>{houseIncludedSet.size}</strong> sabor(es) fijos.
+              </p>
+            ) : defaultFlavorIds.length > 0 ? (
               <p>
                 Esta proteína incluye por defecto: <strong>{defaultFlavorIds.length}</strong>{' '}
                 sabor(es).
               </p>
             ) : (
               <p>
-                Sin defaults: incluye <strong>{variant === 'double' ? '2' : '1'}</strong> sabor(es)
+                Sin defaults: incluye <strong>{variant === 'doble' ? '2' : '1'}</strong> sabor(es)
                 gratis.
               </p>
             )}
@@ -247,7 +400,7 @@ export default function SimulatorClient(props: {
               <div className="grid gap-2">
                 {list.map((f) => {
                   const active = selectedFlavorIds.includes(f.id)
-                  const isDefault = defaultFlavorIds.includes(f.id)
+                  const isDefault = isIncludedForUI(f.id)
                   return (
                     <label key={f.id} className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={active} onChange={() => toggleFlavor(f.id)} />
@@ -277,13 +430,13 @@ export default function SimulatorClient(props: {
             <div>
               <div className="text-sm mb-1">Sabores</div>
               <ul className="text-sm space-y-1">
-                {burgerPricing.flavorsIncluded.map((id) => (
+                {burgerPricing.flavorsIncluded.map((id: string) => (
                   <li key={id} className="flex items-center gap-2">
                     <Badge>Incluido</Badge>
                     <span>{flavorsMap[id]?.name ?? id}</span>
                   </li>
                 ))}
-                {burgerPricing.flavorsCharged.map((c) => (
+                {burgerPricing.flavorsCharged.map((c: { id: string; amount: number }) => (
                   <li key={c.id} className="flex items-center gap-2">
                     <Badge>+${c.amount}</Badge>
                     <span>{flavorsMap[c.id]?.name ?? c.id}</span>
@@ -295,7 +448,7 @@ export default function SimulatorClient(props: {
               <div className="text-sm mb-1">Extras</div>
               <ul className="text-sm space-y-1">
                 {burgerPricing.extras.length ? (
-                  burgerPricing.extras.map((e) => (
+                  burgerPricing.extras.map((e: { id: string; amount: number }) => (
                     <li key={e.id} className="flex items-center gap-2">
                       <Badge>+${e.amount}</Badge>
                       <span>{EXTRAS.find((x) => x.id === e.id)?.name ?? e.id}</span>
