@@ -7,7 +7,8 @@ const formSchema = z.object({
   name: z.string().min(2, 'Escribe tu nombre'),
   email: z.string().email('Email inválido'),
   phone: z.string().optional(),
-  type: z.enum(['queja', 'sugerencia', 'otro']),
+  // opciones ampliadas
+  type: z.enum(['queja', 'sugerencia', 'cotizacion', 'informes', 'otro']),
   order_ref: z.string().optional(),
   message: z.string().min(10, 'Cuéntanos con más detalle (mín. 10 caracteres)'),
 })
@@ -103,7 +104,6 @@ export default function ContactForm() {
 
       setStatus('ok')
 
-      // ✅ GA4 sin redeclarar window.gtag ni ts-ignore, compatible con src/lib/ga.ts
       if (typeof window !== 'undefined' && hasGtag(window)) {
         window.gtag('event', 'feedback_submitted', {
           feedback_type: values.type,
@@ -120,15 +120,25 @@ export default function ContactForm() {
     }
   }
 
+  const showOrderRef = values.type === 'queja'
+
   return (
-    <form onSubmit={onSubmit} className="card space-y-4">
+    <form onSubmit={onSubmit} className="card space-y-5">
+      {/* Encabezado pequeño para darle jerarquía */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-lg tracking-wide">Escríbenos</h2>
+        </div>
+      </div>
+
       {/* Honeypot (no mostrar) */}
       <div className="hidden">
         <label htmlFor="website">Website</label>
         <input id="website" name="website" value={website} onChange={(e) => setWebsite(e.target.value)} />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      {/* Datos de contacto */}
+      <fieldset className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="name">Nombre *</label>
           <input
@@ -155,9 +165,9 @@ export default function ContactForm() {
           />
           {errors.email && <p className="text-sm text-[--danger] mt-1">{errors.email}</p>}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <fieldset className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="phone">Teléfono</label>
           <input
@@ -180,23 +190,36 @@ export default function ContactForm() {
           >
             <option value="sugerencia">Sugerencia</option>
             <option value="queja">Queja</option>
+            <option value="cotizacion">Cotización</option>
+            <option value="informes">Informes</option>
             <option value="otro">Otro</option>
           </select>
           {errors.type && <p className="text-sm text-[--danger] mt-1">{errors.type}</p>}
+          {values.type === 'queja' && (
+            <p className="text-xs text-gray-500 mt-1">
+              Si tu mensaje es una queja, indícanos (si puedes) la referencia del pedido para ayudarte más rápido.
+            </p>
+          )}
         </div>
-      </div>
+      </fieldset>
 
-      <div>
-        <label className="block text-sm font-medium mb-1" htmlFor="order_ref">Referencia de pedido</label>
-        <input
-          id="order_ref"
-          className="w-full rounded-xl border px-3 py-2"
-          value={values.order_ref ?? ''}
-          onChange={(e) => onChange('order_ref', e.target.value)}
-          placeholder="Opcional"
-        />
-      </div>
+      {/* Referencia solo para queja */}
+      {showOrderRef && (
+        <div>
+          <label className="block text-sm font-medium mb-1" htmlFor="order_ref">
+            Referencia de pedido
+          </label>
+          <input
+            id="order_ref"
+            className="w-full rounded-xl border px-3 py-2"
+            value={values.order_ref ?? ''}
+            onChange={(e) => onChange('order_ref', e.target.value)}
+            placeholder="Ej. #TBH-00123"
+          />
+        </div>
+      )}
 
+      {/* Mensaje */}
       <div>
         <label className="block text-sm font-medium mb-1" htmlFor="message">Mensaje *</label>
         <textarea
@@ -205,24 +228,29 @@ export default function ContactForm() {
           rows={5}
           value={values.message}
           onChange={(e) => onChange('message', e.target.value)}
-          placeholder="Cuéntanos qué pasó o tu idea de mejora…"
+          placeholder={
+            values.type === 'cotizacion'
+              ? 'Cuéntanos qué necesitas cotizar (cantidad, fecha, lugar)…'
+              : values.type === 'informes'
+              ? '¿Qué te gustaría saber?'
+              : 'Cuéntanos qué pasó o tu idea de mejora…'
+          }
           required
         />
         {errors.message && <p className="text-sm text-[--danger] mt-1">{errors.message}</p>}
       </div>
 
+      {/* Acciones / estado */}
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          className="btn-cta"
-          disabled={status === 'sending'}
-        >
+        <button type="submit" className="btn-cta" disabled={status === 'sending'}>
           {status === 'sending' ? 'Enviando…' : 'Enviar'}
         </button>
-        {status === 'ok' && <span className="text-green-700">¡Gracias! Te contactaremos pronto.</span>}
-        {status === 'error' && <span className="text-[--danger]">Ocurrió un error. Intenta de nuevo.</span>}
-        {status === 'fast' && <span className="text-[--danger]">Parece un envío muy rápido. Intenta de nuevo.</span>}
-        {status === 'ratelimited' && <span className="text-[--danger]">Demasiados envíos. Espera un momento.</span>}
+        <div className="text-sm" aria-live="polite">
+          {status === 'ok' && <span className="text-green-700">¡Gracias! Te contactaremos pronto.</span>}
+          {status === 'error' && <span className="text-[--danger]">Ocurrió un error. Intenta de nuevo.</span>}
+          {status === 'fast' && <span className="text-[--danger]">Parece un envío muy rápido. Intenta de nuevo.</span>}
+          {status === 'ratelimited' && <span className="text-[--danger]">Demasiados envíos. Espera un momento.</span>}
+        </div>
       </div>
     </form>
   )

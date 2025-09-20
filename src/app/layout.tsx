@@ -20,7 +20,7 @@ const montserrat = Montserrat({
 export const metadata = {
   title: 'Trailer Burger Hall',
   icons:{
-    icon: '/logo.ico',
+    icon: '/icons/logo.ico',
     //shortcut: '/favicon-16x16.png',
     //apple: '/apple-touch-icon.png',
   },
