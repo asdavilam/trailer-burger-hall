@@ -107,7 +107,7 @@ export default async function Footer() {
             )}
             {social.whatsapp && (
               <IconMask
-                href={`https://wa.me/${(s.whatsapp ?? '').replace(/\D/g, '')}`}
+                href={s.whatsapp ?? '#'}
                 src="/icons/whatsapp.svg"
                 label="WhatsApp"
               />

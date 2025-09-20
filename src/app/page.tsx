@@ -129,11 +129,6 @@ export default async function HomePage() {
                     ) : null}
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="font-semibold leading-snug">{n.title}</h3>
-                      {typeof n.priority === 'number' && (
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border border-[--accent] text-[--espresso]/80">
-                          Prioridad {n.priority}
-                        </span>
-                      )}
                     </div>
                     {n.body && <p className="text-sm text-muted mt-1">{n.body}</p>}
                   </li>
