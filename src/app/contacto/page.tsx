@@ -11,7 +11,7 @@ export default function ContactPage() {
       <header className="text-center">
         <h1 className="font-display text-3xl md:text-4xl tracking-wide">Contacto</h1>
         <p className="text-muted mt-2">
-          Envíanos tus quejas o sugerencias. Tu experiencia nos importa.
+          Envíanos tus quejas, sugerencias o solicitudes. Respondemos cuanto antes.
         </p>
       </header>
 
