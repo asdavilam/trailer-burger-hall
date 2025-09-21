@@ -20,12 +20,12 @@ const montserrat = Montserrat({
 export const metadata = {
   title: 'Trailer Burger Hall',
   icons:{
-    icon: '/icons/logo.ico',
-    //shortcut: '/favicon-16x16.png',
-    //apple: '/apple-touch-icon.png',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
   },
   manifest: '/manifest.webmanifest',
-  description: 'Hamburguesas artesanales · Menú, horarios y contacto',
+  description: 'Hamburguesas de sabores · Menú, horarios y contacto',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

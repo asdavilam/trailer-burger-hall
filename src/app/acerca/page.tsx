@@ -34,36 +34,9 @@ function diaES(eng: string) {
   return map[eng] ?? eng
 }
 
-// Helpers horarios (simple, sin cruces de medianoche)
-function hhmmToMinutes(hhmm: string) {
-  const [h, m] = hhmm.split(':').map(Number)
-  if (Number.isNaN(h) || Number.isNaN(m)) return null
-  return h * 60 + m
-}
-function openStatusForToday(
-  hours: Array<{ dayOfWeek: string; opens: string; closes: string }>,
-  now = new Date(),
-) {
-  const names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
-  const todayEng = names[now.getDay()]
-  const row = hours.find(h => h.dayOfWeek === todayEng)
-  if (!row) return { open: false, label: '—' }
-
-  const minsNow = now.getHours() * 60 + now.getMinutes()
-  const o = hhmmToMinutes(row.opens)
-  const c = hhmmToMinutes(row.closes)
-  if (o == null || c == null) return { open: false, label: `${row.opens} – ${row.closes}` }
-
-  const open = minsNow >= o && minsNow < c
-  const closesAt = `${row.closes} h`
-  const opensAt  = `${row.opens} h`
-  return { open, label: open ? `Cierra ${closesAt}` : `Abre ${opensAt}` }
-}
-
 export default async function AboutPage() {
   const { settings } = await getHomeData()
   const s = (settings as SettingsRow['value'] | null) ?? {}
-  const hours = s?.opening_hours ?? []
 
   // Contenido con fallback
   const mission =
@@ -77,17 +50,10 @@ export default async function AboutPage() {
     'Nacimos de la pasión por la plancha y los sabores intensos. Empezamos con un tráiler y una idea: combinar proteína de calidad con salsas y toppings de casa, para que cada persona arme su mejor versión.'
 
   // Link “Cómo llegar” dinámico (address/geo)
-  const mapsHref = s?.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}`
-    : s?.geo
-      ? `https://www.google.com/maps/search/?api=1&query=${s.geo.lat},${s.geo.lng}`
-      : 'https://maps.google.com/?q=Trailer+Burger+Hall'
-
-  // iFrame embebido fijo que compartiste (punto exacto)
+  const mapsHref =
+  'https://www.google.com/maps/place/Trailer+Burger+Hall/@19.6729454,-99.0133224,17z/data=!3m1!4b1!4m6!3m5!1s0x85d1f27f865ea269:0x119b63daf9079e5f!8m2!3d19.6729454!4d-99.0133224!16s%2Fg%2F11dxl8r848?entry=ttu&g_ep=EgoyMDI1MDkxNy4wIKXMDSoASAFQAw%3D%3D'  // iFrame embebido fijo que compartiste (punto exacto)
   const iframeSrcFixed =
     'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3756.9310832762194!2d-99.01589732405928!3d19.672945381658486!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85d1f27f865ea269%3A0x119b63daf9079e5f!2sTrailer%20Burger%20Hall!5e0!3m2!1ses-419!2smx!4v1758347599572!5m2!1ses-419!2smx'
-
-  const status = openStatusForToday(hours)
 
   return (
     <main className={`${montserrat.className} max-w-6xl mx-auto px-4 py-10 space-y-10`}>
@@ -148,42 +114,6 @@ export default async function AboutPage() {
             </div>
           </article>
         </div>
-      </section>
-
-      {/* Horarios compactos con estado */}
-      <section aria-labelledby="horarios-heading" className="space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 id="horarios-heading" className="font-display text-xl tracking-wide">
-            Horarios
-          </h2>
-
-          <span
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm
-              ${status.open
-                ? 'border-green-300 bg-green-50 text-green-700'
-                : 'border-amber-300 bg-amber-50 text-amber-700'}`}
-            aria-live="polite"
-          >
-            <span className={`h-2.5 w-2.5 rounded-full ${status.open ? 'bg-green-500' : 'bg-amber-500'}`} />
-            {status.open ? 'Abierto ahora' : 'Cerrado'}
-            <span className="text-muted">• {status.label}</span>
-          </span>
-        </div>
-
-        {hours.length === 0 ? (
-          <p className="text-muted">Próximamente horarios.</p>
-        ) : (
-          <div className="rounded-2xl border bg-white/80 shadow-sm">
-            <ul className="divide-y">
-              {hours.map((h, i) => (
-                <li key={i} className="flex items-center justify-between px-4 py-3">
-                  <span className="font-medium">{diaES(h.dayOfWeek)}</span>
-                  <span className="tabular-nums text-gray-700">{h.opens} – {h.closes}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </section>
 
       {/* Ubicación — solo mapa grande y CTAs debajo */}
