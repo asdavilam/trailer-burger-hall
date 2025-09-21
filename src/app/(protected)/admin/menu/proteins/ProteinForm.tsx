@@ -9,6 +9,9 @@ type ProteinFormProps = {
     name: string
     description?: string | null
     price_base: number
+    price_normal: number
+    price_double: number
+    price_light: number
     available: boolean
     category?: ProteinCategory
   }
@@ -50,6 +53,45 @@ export default function ProteinForm({ mode, initial }: ProteinFormProps) {
           step="0.01"
           min="0"
           defaultValue={initial?.price_base ?? 0}
+          className="input"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm mb-1">Precio normal</label>
+        <input
+          name="price_normal"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={initial?.price_normal ?? 0}
+          className="input"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm mb-1">Precio doble</label>
+        <input
+          name="price_double"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={initial?.price_double ?? 0}
+          className="input"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm mb-1">Precio light</label>
+        <input
+          name="price_light"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={initial?.price_light ?? 0}
           className="input"
           required
         />

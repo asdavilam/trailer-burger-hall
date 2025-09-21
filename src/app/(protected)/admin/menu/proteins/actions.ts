@@ -26,7 +26,7 @@ const proteinSchema = z.object({
     path: ['price_double'],
     message: 'El precio doble no puede ser menor que el normal',
   })
-  .refine(d => d.price_light <= d.price_normal, {
+  .refine(d => d.price_light >= d.price_normal, {
     path: ['price_light'],
     message: 'El precio light no puede ser mayor que el normal',
   })
