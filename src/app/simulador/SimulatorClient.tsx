@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback} from 'react'
 import {
   calcHouseBurgerPrice,
   calcTorrePrice,
@@ -93,19 +93,22 @@ export default function SimulatorClient(props: {
     return map
   }, [flavors])
 
-  const uniqueByName = (ids: string[]) => {
-    const seen = new Set<string>()
-    const out: string[] = []
-    for (const id of ids) {
-      const nm = (flavorsMap[id]?.name ?? '').trim().toLowerCase()
-      if (!nm) continue
-      if (!seen.has(nm)) {
-        seen.add(nm)
-        out.push(id)
+  const uniqueByName = useCallback(
+    (ids: string[]) => {
+      const seen = new Set<string>()
+      const out: string[] = []
+      for (const id of ids) {
+        const nm = (flavorsMap[id]?.name ?? '').trim().toLowerCase()
+        if (!nm) continue
+        if (!seen.has(nm)) {
+          seen.add(nm)
+          out.push(id)
+        }
       }
-    }
-    return out
-  }
+      return out
+    },
+    [flavorsMap],
+  )
 
   const houseRule = useMemo(() => {
     const entry = houseMap?.[proteinId]
@@ -229,7 +232,6 @@ export default function SimulatorClient(props: {
     }
   }, [
     protein,
-    proteinId,
     variant,
     selectedFlavorIds,
     defaultFlavorIds,
