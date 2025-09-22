@@ -21,19 +21,6 @@ type SettingsRow = {
   }
 }
 
-function diaES(eng: string) {
-  const map: Record<string, string> = {
-    Monday: 'Lunes',
-    Tuesday: 'Martes',
-    Wednesday: 'Miércoles',
-    Thursday: 'Jueves',
-    Friday: 'Viernes',
-    Saturday: 'Sábado',
-    Sunday: 'Domingo',
-  }
-  return map[eng] ?? eng
-}
-
 export default async function AboutPage() {
   const { settings } = await getHomeData()
   const s = (settings as SettingsRow['value'] | null) ?? {}
