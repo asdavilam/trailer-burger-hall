@@ -8,7 +8,6 @@ type ProteinFormProps = {
     id?: string
     name: string
     description?: string | null
-    price_base: number
     price_normal: number
     price_double: number
     price_light: number
@@ -42,19 +41,6 @@ export default function ProteinForm({ mode, initial }: ProteinFormProps) {
           name="description"
           defaultValue={initial?.description ?? ''}
           className="textarea"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm mb-1">Precio base</label>
-        <input
-          name="price_base"
-          type="number"
-          step="0.01"
-          min="0"
-          defaultValue={initial?.price_base ?? 0}
-          className="input"
-          required
         />
       </div>
 
