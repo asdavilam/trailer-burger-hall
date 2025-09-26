@@ -177,10 +177,12 @@ function SectionTabs({ sections, activeId, onChange }: {
 /* =============================
    MenuListClient
 ============================= */
+type SectionsPayload = MenuSection[] | { sections: MenuSection[] }
+
 export default function MenuListClient({ initial }: { initial: MenuSection[] }) {
   const { data } = useSWR<MenuSection[]>('/api/menu', fetcher, { fallbackData: initial })
 
-  const raw = (data ?? initial) as any
+  const raw = (data ?? initial) as SectionsPayload
   const sections: MenuSection[] = Array.isArray(raw) ? raw : Array.isArray(raw?.sections) ? raw.sections : []
 
   const sabores = sections.find((s) => s.id === 'sabores') || null

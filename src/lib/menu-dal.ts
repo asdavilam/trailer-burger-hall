@@ -15,8 +15,9 @@ type FlavorRow = {
 }
 
 /* Helpers */
-const safeBool = (v: any, d = true) => (typeof v === 'boolean' ? v : d)
-const safeNum = (v: any, d = 0) => (typeof v === 'number' && !isNaN(v) ? v : d)
+const safeBool = (v: unknown, d = true): boolean => (typeof v === 'boolean' ? v : d)
+const safeNum = (v: unknown, d = 0): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : d
 
 /** Lee los sabores desde Supabase */
 async function fetchFlavors(): Promise<FlavorRow[]> {
