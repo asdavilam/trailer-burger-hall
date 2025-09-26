@@ -1,6 +1,6 @@
-import DigitalMenu from '@/app/components/menu/DigitalMenu'
-import { MENU_SECTIONS } from '@/lib/menu-schema'
+
 import Link from 'next/link'
+import MenuInformativo from './MenuInformativo'
 
 export const metadata = {
   title: 'Menú — Trailer Burger Hall',
@@ -20,11 +20,10 @@ export default async function MenuPage() {
           >
             Ir al simulador
           </Link>
-          .
         </p>
       </header>
 
-      <DigitalMenu sections={MENU_SECTIONS} />
+      <MenuInformativo menuSections={[]} />
     </main>
   )
 }
