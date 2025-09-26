@@ -1,6 +1,6 @@
 // src/app/api/menu/route.ts
 import { NextResponse } from 'next/server'
-import { fetchMenuSectionsFromDb } from '@/lib/menu-dal'
+import { fetchMenuSectionsFromDb } from '../../../lib/menu-dal'
 
 export async function GET() {
   try {

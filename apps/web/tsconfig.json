@@ -22,6 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "**/*.d.ts", "src/app/(protected)/admin/menu/proteins"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "**/*.d.ts", "src/app/(protected)/admin/menu/proteins", "../../types/**/*.d.ts"],
   "exclude": ["node_modules"]
 }
