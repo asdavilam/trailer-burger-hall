@@ -5,7 +5,7 @@ import {
   calcHouseBurgerPrice,
   calcTorrePrice,
   calcPapasItalianasPrice,
-} from '@/lib/pricing'
+} from '@trailer/shared'
 
 type VariantKind = 'normal' | 'doble' | 'light' | 'casa' | 'torre'
 

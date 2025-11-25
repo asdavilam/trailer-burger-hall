@@ -1,7 +1,7 @@
 // src/lib/menu-dal.ts
 import { supabaseServer } from './supabaseServer'
 import type { MenuSection, MenuItem, MenuPrice } from '@/app/menu/types'
-import { MENU_SECTIONS } from '@/lib/menu-schema' // usamos tu schema para TODO excepto 'sabores'
+import { MENU_SECTIONS } from '@trailer/shared' // usamos tu schema para TODO excepto 'sabores'
 
 /** Filas reales de la tabla flavors */
 type FlavorRow = {

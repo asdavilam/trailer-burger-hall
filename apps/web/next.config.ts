@@ -20,6 +20,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@trailer/shared'],
 
   // 🚫 Cache agresivo para manifest e iconos (evita que se quede el de Vercel)
   async headers() {

@@ -1,4 +1,4 @@
-import type { MenuSection, MenuItem, MenuPrice } from '@/lib/menu-schema'
+import type { MenuSection, MenuItem, MenuPrice } from '@trailer/shared'
 
 function mx(n: number) {
   return Number.isInteger(n) ? `$${n.toFixed(0)}` : `$${n.toFixed(2)}`

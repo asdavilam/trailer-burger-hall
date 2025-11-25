@@ -1,37 +1,10 @@
-// lib/pricing.ts
-
-export type VariantKind = 'normal' | 'double' | 'light' | 'casa' | 'torre'
-
-export type Protein = {
-  id: string
-  name: string
-  price_base: number // compat con tu frontend (sin tocar consultas)
-  price_double: number
-  price_light: number
-  available?: boolean
-}
-
-export type Flavor = {
-  id: string
-  name: string
-  intensity: 'normal' | 'extremo'
-  price_extra: number // 5 o 10 (ya lo mapeamos en BD a price_extra)
-  available?: boolean
-}
-
-export type Extra = {
-  id: string
-  name: string
-  price: number
-}
-
-export type PriceBreakdown = {
-  base: number
-  flavorsIncluded: string[] // ids incluidos gratis
-  flavorsCharged: { id: string; amount: number }[]
-  extras: { id: string; amount: number }[]
-  total: number
-}
+import { 
+  Protein, 
+  Flavor, 
+  Extra, 
+  VariantKind, 
+  PriceBreakdown 
+} from './types';
 
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0)
 

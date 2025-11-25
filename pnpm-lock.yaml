@@ -7,6 +7,21 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      husky:
+        specifier: ^9.1.7
+        version: 9.1.7
+      lint-staged:
+        specifier: ^16.1.5
+        version: 16.2.1
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      turbo:
+        specifier: ^2.5.8
+        version: 2.5.8
+
+  apps/web:
     dependencies:
       '@supabase/ssr':
         specifier: ^0.7.0
@@ -14,6 +29,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.56.0
         version: 2.58.0
+      '@trailer/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       framer-motion:
         specifier: ^12.23.12
         version: 12.23.22(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -96,15 +114,31 @@ importers:
       tailwindcss:
         specifier: ^4
         version: 4.1.13
-      turbo:
-        specifier: ^2.5.8
-        version: 2.5.8
       typescript:
         specifier: ^5
         version: 5.9.2
       typescript-eslint:
         specifier: ^8.44.0
         version: 8.44.1(eslint@9.36.0(jiti@2.6.0))(typescript@5.9.2)
+
+  packages/shared:
+    dependencies:
+      '@supabase/ssr':
+        specifier: ^0.7.0
+        version: 0.7.0(@supabase/supabase-js@2.58.0)
+      '@supabase/supabase-js':
+        specifier: ^2.58.0
+        version: 2.58.0
+      zod:
+        specifier: ^4.0.17
+        version: 4.1.11
+    devDependencies:
+      eslint:
+        specifier: ^9.0.0
+        version: 9.36.0(jiti@2.6.0)
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.2
 
 packages:
 
