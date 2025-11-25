@@ -1,13 +1,26 @@
-
 import Link from 'next/link'
 import MenuInformativo from './MenuInformativo'
+import { fetchMenuSectionsFromDb } from '@/lib/menu-dal'
+import type { MenuSection } from '@trailer/shared'
 
 export const metadata = {
   title: 'Menú — Trailer Burger Hall',
   description: 'Carta digital: hamburguesas, sabores, extras y bebidas.',
 }
 
+export const revalidate = 60 // ISR: revalida cada 60 segundos
+export const dynamic = 'force-dynamic' // Force dynamic rendering to prevent build-time errors
+
 export default async function MenuPage() {
+  // Fetch menu data server-side with fallback for build time
+  let menuSections: MenuSection[] = []
+  try {
+    menuSections = await fetchMenuSectionsFromDb()
+  } catch (error) {
+    console.error('Error fetching menu sections:', error)
+    menuSections = []
+  }
+
   return (
     <main className="container mx-auto max-w-6xl px-4 py-8">
       <header className="mb-8">
@@ -23,7 +36,7 @@ export default async function MenuPage() {
         </p>
       </header>
 
-      <MenuInformativo menuSections={[]} />
+      <MenuInformativo menuSections={menuSections} />
     </main>
   )
 }

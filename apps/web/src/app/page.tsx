@@ -11,6 +11,7 @@ import OpeningHours from './components/OpeningHours'
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['400'], display: 'swap' })
 
 export const revalidate = 60 // ISR básico; luego usaremos revalidateTag desde el admin
+export const dynamic = 'force-dynamic' // Force SSR to prevent build-time Supabase errors
 
 type Notice = {
   id: string
@@ -267,10 +268,10 @@ export default async function HomePage() {
               'Av. Ejemplo 123, Col. Centro, Ciudad de México, CDMX, 06000, MX',
             geo: settingsValue?.geo
               ? {
-                  '@type': 'GeoCoordinates',
-                  latitude: settingsValue.geo.lat,
-                  longitude: settingsValue.geo.lng,
-                }
+                '@type': 'GeoCoordinates',
+                latitude: settingsValue.geo.lat,
+                longitude: settingsValue.geo.lng,
+              }
               : { '@type': 'GeoCoordinates', latitude: 19.4326, longitude: -99.1332 },
             sameAs: sameAs,
             menu: siteUrl + '/menu',

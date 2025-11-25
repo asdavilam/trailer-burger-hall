@@ -1,5 +1,5 @@
 // src/lib/menu-dal.ts
-import { supabaseServer } from './supabaseServer'
+import { supabase } from './supabaseClient'
 import type { MenuSection, MenuItem, MenuPrice } from '@trailer/shared'
 
 /**
@@ -39,8 +39,6 @@ type SectionRow = {
  * Realiza un join profundo: menu_sections -> menu_items -> menu_item_prices
  */
 export async function fetchMenuSectionsFromDb(): Promise<MenuSection[]> {
-  const supabase = await supabaseServer()
-
   const { data, error } = await supabase
     .from('menu_sections')
     .select(`

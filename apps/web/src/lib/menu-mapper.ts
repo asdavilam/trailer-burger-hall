@@ -1,5 +1,5 @@
 // src/lib/menu-mapper.ts
-import type { MenuSection, MenuItem, MenuPrice } from '@/app/menu/types'
+import type { MenuSection, MenuItem, MenuPrice } from '@trailer/shared'
 
 type DbPrice = { label: string | null; amount: number | null }
 type DbItem = {

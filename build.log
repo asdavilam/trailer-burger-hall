@@ -1,0 +1,76 @@
+
+> trailer-burger-hall@ build /Users/aletzsantiagodavilamenez/Documents/Projects/trailer-burger-hall
+> turbo run build --filter \@apps/web
+
+turbo 2.5.8
+
+• Packages in scope: @apps/web
+• Running build in 1 packages
+• Remote caching disabled
+@apps/web:build: cache miss, executing 3324f94ccb5d39b3
+@apps/web:build: 
+@apps/web:build: > @apps/web@0.1.0 build /Users/aletzsantiagodavilamenez/Documents/Projects/trailer-burger-hall/apps/web
+@apps/web:build: > next build
+@apps/web:build: 
+@apps/web:build: [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+@apps/web:build:    ▲ Next.js 15.5.0
+@apps/web:build:    - Environments: .env.local
+@apps/web:build: 
+@apps/web:build:    Creating an optimized production build ...
+@apps/web:build: > [PWA] Compile server
+@apps/web:build: > [PWA] Compile server
+@apps/web:build: > [PWA] Compile client (static)
+@apps/web:build: > [PWA] Auto register service worker with: /Users/aletzsantiagodavilamenez/Documents/Projects/trailer-burger-hall/node_modules/.pnpm/next-pwa@5.6.0_@babel+core@7.28.4_next@15.5.0_@babel+core@7.28.4_react-dom@19.1.0_react@19.1._yzi7ou3wvsmxooxbr3a7t2rmlu/node_modules/next-pwa/register.js
+@apps/web:build: > [PWA] Service worker: /Users/aletzsantiagodavilamenez/Documents/Projects/trailer-burger-hall/apps/web/public/sw.js
+@apps/web:build: > [PWA]   url: /sw.js
+@apps/web:build: > [PWA]   scope: /
+@apps/web:build: > [PWA] Fallback to precache routes when fetch failed from cache or network:
+@apps/web:build: > [PWA]   document (page): /offline.html
+@apps/web:build: > [PWA]   image: /icons/icon-192.png
+@apps/web:build: > [PWA]   audio: /offline.html
+@apps/web:build: > [PWA]   video: /offline.html
+@apps/web:build: > [PWA]   font: /offline.html
+@apps/web:build:  ✓ Compiled successfully in 3.7s
+@apps/web:build:    Linting and checking validity of types ...
+@apps/web:build: 
+@apps/web:build: ./src/app/simulador/SimulatorClient.tsx
+@apps/web:build: 145:6  Warning: React Hook useMemo has a missing dependency: 'uniqueByName'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@apps/web:build: 
+@apps/web:build: info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+@apps/web:build:    Collecting page data ...
+@apps/web:build: (node:34758) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build: (node:34754) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build: (node:34757) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build: (node:34756) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build: (node:34755) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build: (node:34752) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build: (node:34753) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build:    Generating static pages (0/21) ...
+@apps/web:build: (node:34773) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@apps/web:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@apps/web:build:    Generating static pages (5/21) 
+@apps/web:build: TypeError: Cannot read properties of undefined (reading 'call')
+@apps/web:build:     at Object.c [as require] (.next/server/webpack-runtime.js:1:128)
+@apps/web:build: Error occurred prerendering page "/menu". Read more: https://nextjs.org/docs/messages/prerender-error
+@apps/web:build: TypeError: Cannot read properties of undefined (reading 'call')
+@apps/web:build:     at Object.c [as require] (.next/server/webpack-runtime.js:1:128)
+@apps/web:build: Export encountered an error on /menu/page: /menu, exiting the build.
+@apps/web:build:  ⨯ Next.js build worker exited with code: 1 and signal: null
+@apps/web:build:  ELIFECYCLE  Command failed with exit code 1.
+@apps/web:build: ERROR: command finished with error: command (/Users/aletzsantiagodavilamenez/Documents/Projects/trailer-burger-hall/apps/web) /Users/aletzsantiagodavilamenez/.npm-global/bin/pnpm run build exited (1)
+@apps/web#build: command (/Users/aletzsantiagodavilamenez/Documents/Projects/trailer-burger-hall/apps/web) /Users/aletzsantiagodavilamenez/.npm-global/bin/pnpm run build exited (1)
+
+ Tasks:    0 successful, 1 total
+Cached:    0 cached, 1 total
+  Time:    10.225s 
+Failed:    @apps/web#build
+
+ ERROR  run failed: command  exited (1)
+ ELIFECYCLE  Command failed with exit code 1.

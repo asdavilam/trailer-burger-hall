@@ -1,6 +1,5 @@
 // src/app/menu/MenuInformativo.tsx
 import React from 'react'
-import { GetStaticProps } from 'next'
 import MenuListClient from './MenuListClient'
 import type { MenuSection } from '@trailer/shared'
 
@@ -17,16 +16,4 @@ export default function MenuPage({ menuSections: initial }: MenuPageProps) {
       </div>
     </main>
   )
-}
-
-export const getStaticProps: GetStaticProps<MenuPageProps> = async () => {
-  const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-  let menuSections: MenuSection[] = []
-  try {
-    const res = await fetch(`${site}/api/menu`, { cache: 'no-store' })
-    if (res.ok) menuSections = await res.json()
-  } catch {
-    menuSections = []
-  }
-  return { props: { menuSections }, revalidate: 60 }
 }
