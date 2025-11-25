@@ -21,6 +21,16 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@trailer/shared'],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'hrxwfhpzyludxdsnqibv.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
 
   // 🚫 Cache agresivo para manifest e iconos (evita que se quede el de Vercel)
   async headers() {

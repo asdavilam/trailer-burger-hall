@@ -2,7 +2,7 @@
 import React from 'react'
 import { GetStaticProps } from 'next'
 import MenuListClient from './MenuListClient'
-import type { MenuSection } from './types'
+import type { MenuSection } from '@trailer/shared'
 
 type MenuPageProps = {
   menuSections: MenuSection[]

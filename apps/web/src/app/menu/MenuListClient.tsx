@@ -3,7 +3,7 @@
 import React from 'react'
 import Image from 'next/image'
 import useSWR from 'swr'
-import type { MenuSection, MenuItem, MenuPrice } from './types'
+import type { MenuSection, MenuItem, MenuPrice } from '@trailer/shared'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -163,7 +163,7 @@ function SectionTabs({ sections, activeId, onChange }: {
             onClick={() => onChange(s.id)}
             className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium transition
               ${active ? 'bg-amber-100 text-stone-900 border border-amber-200'
-                       : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'}`}
+                : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'}`}
             aria-pressed={active}
           >
             {s.title.replace('Hamburguesas — ', '')}
@@ -175,12 +175,45 @@ function SectionTabs({ sections, activeId, onChange }: {
 }
 
 /* =============================
+   Skeleton de Carga
+============================= */
+function MenuSkeleton() {
+  return (
+    <div className="space-y-10 animate-pulse">
+      {/* Sección Hero (Sabores) */}
+      <div className="space-y-4">
+        <div className="h-8 w-48 bg-stone-200 rounded" />
+        <div className="h-4 w-full max-w-2xl bg-stone-100 rounded" />
+        <div className={GRID_COMPACT + ' ' + GRID_GAP}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-32 rounded-2xl bg-stone-100 border border-stone-200" />
+          ))}
+        </div>
+      </div>
+
+      {/* Sección Clásicas */}
+      <div className="space-y-4 pt-4">
+        <div className="h-8 w-64 bg-stone-200 rounded" />
+        <div className={GRID_LARGE + ' ' + GRID_GAP}>
+          {[1, 2].map((i) => (
+            <div key={i} className="h-40 rounded-2xl bg-stone-100 border border-stone-200" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* =============================
    MenuListClient
 ============================= */
 type SectionsPayload = MenuSection[] | { sections: MenuSection[] }
 
 export default function MenuListClient({ initial }: { initial: MenuSection[] }) {
-  const { data } = useSWR<MenuSection[]>('/api/menu', fetcher, { fallbackData: initial })
+  const { data, isLoading, isValidating } = useSWR<MenuSection[]>('/api/menu', fetcher, {
+    fallbackData: initial,
+    revalidateOnFocus: false
+  })
 
   const raw = (data ?? initial) as SectionsPayload
   const sections: MenuSection[] = Array.isArray(raw) ? raw : Array.isArray(raw?.sections) ? raw.sections : []
@@ -195,6 +228,14 @@ export default function MenuListClient({ initial }: { initial: MenuSection[] }) 
       setActive(others[0]?.id ?? 'clasicas')
     }
   }, [others, active])
+
+  // Lógica de carga: Si no hay secciones y se está cargando/validando -> Skeleton
+  const showSkeleton = sections.length === 0 && (isLoading || isValidating)
+  const showEmpty = sections.length === 0 && !showSkeleton
+
+  if (showSkeleton) {
+    return <MenuSkeleton />
+  }
 
   return (
     <div className="space-y-10">
@@ -211,9 +252,10 @@ export default function MenuListClient({ initial }: { initial: MenuSection[] }) 
         </>
       )}
 
-      {sections.length === 0 && (
-        <div className="rounded-md border border-stone-200 p-4 text-center text-sm text-stone-600">
-          Menú temporalmente no disponible.
+      {showEmpty && (
+        <div className="rounded-md border border-stone-200 p-8 text-center">
+          <p className="text-lg font-medium text-stone-900">Menú no disponible</p>
+          <p className="text-sm text-stone-500 mt-1">Estamos actualizando nuestra carta. Vuelve en unos momentos.</p>
         </div>
       )}
     </div>

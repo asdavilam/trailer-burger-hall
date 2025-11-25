@@ -1,80 +1,113 @@
 // src/lib/menu-dal.ts
 import { supabaseServer } from './supabaseServer'
-import type { MenuSection, MenuItem, MenuPrice } from '@/app/menu/types'
-import { MENU_SECTIONS } from '@trailer/shared' // usamos tu schema para TODO excepto 'sabores'
+import type { MenuSection, MenuItem, MenuPrice } from '@trailer/shared'
 
-/** Filas reales de la tabla flavors */
-type FlavorRow = {
-  id: string
-  name: string
-  intensity: 'normal' | 'extremo' | null
-  description: string | null
-  tags: string[] | null
-  price_extra: number | null
-  available: boolean | null
+/**
+ * Tipos de respuesta de Supabase (Join)
+ */
+type PriceRow = {
+  label: string | null
+  value: number
+  sort_order: number
 }
 
-/* Helpers */
-const safeBool = (v: unknown, d = true): boolean => (typeof v === 'boolean' ? v : d)
-const safeNum = (v: unknown, d = 0): number =>
-  typeof v === 'number' && Number.isFinite(v) ? v : d
+type ItemRow = {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+  available: boolean
+  tags: string[] | null
+  badges: string[] | null
+  includes_list: string[] | null
+  note: string | null
+  sort_order: number
+  prices: PriceRow[]
+}
 
-/** Lee los sabores desde Supabase */
-async function fetchFlavors(): Promise<FlavorRow[]> {
-  const supabase = await supabaseServer()
-  const { data, error } = await supabase
-    .from('flavors')
-    .select('id,name,intensity,description,tags,price_extra,available')
-    .order('name', { ascending: true })
-
-  if (error) {
-    console.warn('[menu-dal] fetchFlavors warn:', error.message)
-    return []
-  }
-  return (data ?? []) as FlavorRow[]
+type SectionRow = {
+  id: string
+  title: string
+  subtitle: string | null
+  layout: 'cards' | 'list'
+  sort_order: number
+  items: ItemRow[]
 }
 
 /**
- * Construye el MenuSection[] híbrido:
- * - Sección 'sabores' viene de BD
- * - Todas las demás secciones vienen del schema estático
+ * Obtiene el menú completo desde las nuevas tablas de Supabase.
+ * Realiza un join profundo: menu_sections -> menu_items -> menu_item_prices
  */
 export async function fetchMenuSectionsFromDb(): Promise<MenuSection[]> {
-  // 1) Trae sabores desde BD
-  const flavors = await fetchFlavors()
+  const supabase = await supabaseServer()
 
-  // 2) Mapea sabores de BD -> MenuItem[]
-  const flavorItems: MenuItem[] = flavors
-    .filter((f) => safeBool(f.available, true))
-    .map((f) => {
-      const extraPrice = f.price_extra ?? (f.intensity === 'extremo' ? 10 : 5)
-      const prices: MenuPrice[] = [{ label: 'Extra', value: safeNum(extraPrice, 0) }]
-      const tags = f.tags ?? (f.intensity === 'extremo' ? ['muy_picante'] : undefined)
-      return {
-        id: f.id,
-        name: f.name,
-        description: f.description ?? undefined,
-        prices,
+  const { data, error } = await supabase
+    .from('menu_sections')
+    .select(`
+      id,
+      title,
+      subtitle,
+      layout,
+      sort_order,
+      items:menu_items (
+        id,
+        name,
+        description,
+        image_url,
+        available,
         tags,
-        available: safeBool(f.available, true),
-      }
-    })
+        badges,
+        includes_list,
+        note,
+        sort_order,
+        prices:menu_item_prices (
+          label,
+          value,
+          sort_order
+        )
+      )
+    `)
+    .order('sort_order', { ascending: true })
+    .order('sort_order', { foreignTable: 'menu_items', ascending: true })
+    .order('sort_order', { foreignTable: 'menu_items.prices', ascending: true })
 
-  // 3) Toma la metadata base de la sección 'sabores' del schema estático
-  const saboresBase = MENU_SECTIONS.find((s) => s.id === 'sabores')
-  const saboresSection: MenuSection = {
-    id: 'sabores',
-    title: saboresBase?.title ?? 'Sabores',
-    subtitle:
-      saboresBase?.subtitle ??
-      'Elige tu combinación. En Res/Pollo el primer sabor está incluido. Extras: +$5 (Extremo +$10).',
-    layout: saboresBase?.layout ?? 'cards',
-    items: flavorItems,
+  if (error) {
+    console.error('[menu-dal] Error fetching menu:', error)
+    return []
   }
 
-  // 4) Mantén todas las demás secciones EXACTAMENTE como en tu schema estático
-  const otherSections = MENU_SECTIONS.filter((s) => s.id !== 'sabores')
+  if (!data) return []
 
-  // 5) Devuelve el menú final (BD + estático)
-  return [saboresSection, ...otherSections]
+  // Mapear la respuesta de Supabase al tipo MenuSection[] que espera el frontend
+  const sections: MenuSection[] = (data as unknown as SectionRow[]).map((s) => ({
+    id: s.id,
+    title: s.title,
+    subtitle: s.subtitle ?? undefined,
+    layout: s.layout ?? 'cards',
+    items: s.items.map((item) => {
+      // Mapear precios
+      const prices: MenuPrice[] = item.prices.map((p) => ({
+        label: p.label ?? undefined,
+        value: Number(p.value), // Asegurar que sea número
+      }))
+
+      // Construir el MenuItem
+      const menuItem: MenuItem = {
+        id: item.id,
+        name: item.name,
+        description: item.description ?? undefined,
+        prices,
+        tags: item.tags ?? undefined,
+        available: item.available,
+        includes: item.includes_list ?? undefined,
+        badges: item.badges ?? undefined,
+        note: item.note ?? undefined,
+        image: item.image_url ?? undefined,
+      }
+
+      return menuItem
+    }),
+  }))
+
+  return sections
 }

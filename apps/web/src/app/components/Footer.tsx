@@ -70,7 +70,7 @@ export default async function Footer() {
           <div className="flex items-center gap-2">
             {/* si quieres seguir mostrando el PNG del logo */}
             <img
-              src="/icons/logo.png"
+              src="/icons/logo.ico"
               alt={s.restaurant_name ?? 'Trailer Burger Hall'}
               width={70}
               height={70}

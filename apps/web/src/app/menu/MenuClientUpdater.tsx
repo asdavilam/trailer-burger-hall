@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import useSWR from 'swr'
-import type { MenuSection } from './types' // ajusta la ruta si tu types están en otro sitio
+import type { MenuSection } from '@trailer/shared'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
