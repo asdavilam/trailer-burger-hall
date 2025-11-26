@@ -70,15 +70,12 @@ export default async function Footer() {
           <div className="flex items-center gap-2">
             {/* si quieres seguir mostrando el PNG del logo */}
             <img
-              src="/icons/logo.ico"
+              src="/icons/LOGO_TBH.png"
               alt={s.restaurant_name ?? 'Trailer Burger Hall'}
-              width={70}
-              height={70}
+              width={200}
+              height={200}
               className="rounded-full"
             />
-            <span className="font-display text-lg text-[#C08A3E]">
-              {s.restaurant_name ?? 'Trailer Burger Hall'}
-            </span>
           </div>
           <p className="text-sm text-[#F6F1E7]/80">
             Hamburguesas artesanales, frescas y únicas.

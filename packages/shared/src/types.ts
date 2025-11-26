@@ -41,3 +41,62 @@ export type PriceBreakdown = {
   extras: { id: string; amount: number }[]
   total: number
 }
+
+export type UserRole = 'admin' | 'staff' | 'kitchen';
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  role: UserRole;
+  display_name?: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type SupplyUnit = 'kg' | 'lt' | 'pz' | 'gr' | 'ml';
+
+export type Supply = {
+  id: string;
+  name: string;
+  unit: SupplyUnit;
+  cost_per_unit: number;
+  current_stock: number;
+  min_stock?: number | null;
+  provider?: string | null;
+  created_at?: string;
+};
+
+export type InventoryAssignment = {
+  id: string;
+  user_id: string;
+  supply_id: string;
+  // Opcional: incluir datos expandidos si haces joins
+  supply?: Supply; 
+  user?: UserProfile;
+};
+
+export type InventoryLog = {
+  id: string;
+  date: string; // formato YYYY-MM-DD
+  supply_id: string;
+  user_id: string;
+  initial_stock: number;
+  entries: number;
+  exits: number;
+  final_count: number;
+  comments?: string;
+};
+
+export type ProductIngredient = {
+  id: string;
+  // Puede pertenecer a uno de estos:
+  protein_id?: string | null;
+  flavor_id?: string | null;
+  extra_id?: string | null;
+  
+  // Se conecta con:
+  supply_id: string;
+  supply?: Supply; // Para poder mostrar el nombre "Carne" en el front
+  
+  quantity: number;
+};
