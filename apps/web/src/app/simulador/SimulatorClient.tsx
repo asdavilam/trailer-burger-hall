@@ -1,502 +1,470 @@
+// apps/web/src/app/simulador/SimulatorClient.tsx V2
 'use client'
 
-import { useEffect, useMemo, useState, useCallback} from 'react'
-import {
-  calcHouseBurgerPrice,
-  calcTorrePrice,
-  calcPapasItalianasPrice,
-} from '@trailer/shared'
+import { useState, useMemo, useEffect } from 'react'
+import { V2Product, V2Modifier, V2ProductVariant } from '@trailer/shared'
 
-type VariantKind = 'normal' | 'doble' | 'light' | 'casa' | 'torre'
-
-type Protein = {
-  id: string
-  name: string
-  price_base: number
-  price_double: number
-  price_light: number
-  available?: boolean
+type OrderItem = {
+  product: V2Product
+  variant: V2ProductVariant
+  selectedModifiers: { modifier: V2Modifier; quantity: number }[]
+  quantity: number
 }
 
-type Flavor = {
-  id: string
-  name: string
-  intensity: 'normal' | 'extremo'
-  price_extra: number
-  tags: string[] | null
-  available?: boolean
-}
-
-type Extra = { id: string; name: string; price: number }
-type PapasCfg = { basePrice: number; allowFlavors: boolean; flavorExtraNormal: number } | null
-
-type HouseEntry = {
-  price?: number
-  includedIds?: string[]
-  default_flavors_json?: { secondary?: string[] }
-} | undefined
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return <span className="px-2 py-0.5 rounded-full text-xs border">{children}</span>
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="card">
-      <h2 className="font-semibold mb-3">{title}</h2>
-      {children}
-    </div>
-  )
-}
-
-export default function SimulatorClient(props: {
-  proteins: Protein[]
-  flavors: Flavor[]
-  flavorsMap: Record<string, Flavor>
-  defaultsMap: Record<string, string[]>
-  houseMap: Record<string, HouseEntry>
-  torreMap: Record<string, number>
-  papasCfg: PapasCfg
+export default function SimulatorClient({
+  products,
+  modifiers
+}: {
+  products: V2Product[]
+  modifiers: V2Modifier[]
 }) {
-  const { proteins, flavors, flavorsMap, defaultsMap, houseMap, torreMap, papasCfg } = props
+  // Estado del formulario
+  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id ?? '')
+  const [selectedVariantId, setSelectedVariantId] = useState<string>('')
+  const [selectedModifierIds, setSelectedModifierIds] = useState<string[]>([])
+  const [cart, setCart] = useState<OrderItem[]>([])
 
-  const [proteinId, setProteinId] = useState<string>(proteins[0]?.id ?? '')
-  const [variant, setVariant] = useState<VariantKind>('normal')
-  const [selectedFlavorIds, setSelectedFlavorIds] = useState<string[]>([])
-  const [selectedExtras, setSelectedExtras] = useState<Extra[]>([])
-  const [simulatePapas, setSimulatePapas] = useState(false)
-  const [papasFlavorIds, setPapasFlavorIds] = useState<string[]>([])
-
-  const EXTRAS: Extra[] = [
-    { id: 'queso', name: 'Queso', price: 10 },
-    { id: 'tocino', name: 'Tocino', price: 20 },
-    { id: 'carne', name: 'Carne extra', price: 50 },
-  ]
-
-  const defaultFlavorIds = useMemo(
-    () => defaultsMap[proteinId] ?? [],
-    [defaultsMap, proteinId],
+  // Datos derivados
+  const selectedProduct = useMemo(
+    () => products.find(p => p.id === selectedProductId),
+    [products, selectedProductId]
   )
 
-  useEffect(() => {
-    setSelectedFlavorIds(defaultFlavorIds)
-  }, [proteinId, defaultFlavorIds])
-
-  const protein = useMemo(
-    () => proteins.find((p) => p.id === proteinId) ?? null,
-    [proteinId, proteins],
+  const selectedVariant = useMemo(
+    () => selectedProduct?.variants?.find(v => v.id === selectedVariantId),
+    [selectedProduct, selectedVariantId]
   )
 
-  const flavorIdByName = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const f of flavors) map.set(f.name.trim().toLowerCase(), f.id)
-    return map
-  }, [flavors])
+  // Modifiers grouped by type
+  const flavorModifiers = useMemo(() => modifiers.filter(m => m.type === 'flavor'), [modifiers])
+  const extraModifiers = useMemo(() => modifiers.filter(m => m.type === 'extra'), [modifiers])
 
-  const uniqueByName = useCallback(
-    (ids: string[]) => {
-      const seen = new Set<string>()
-      const out: string[] = []
-      for (const id of ids) {
-        const nm = (flavorsMap[id]?.name ?? '').trim().toLowerCase()
-        if (!nm) continue
-        if (!seen.has(nm)) {
-          seen.add(nm)
-          out.push(id)
-        }
+  // For burger products: ALL flavors are available, extras need to be configured
+  // For other products: use configured allowed_modifiers
+  const availableFlavors = useMemo(() => {
+    if (!selectedProduct) return []
+
+    // For burgers (protein_base or special), show ALL flavors
+    if (selectedProduct.category === 'protein_base' || selectedProduct.category === 'special') {
+      return flavorModifiers
+    }
+
+    // For other products, only show configured flavors
+    const allowedIds = selectedProduct.allowed_modifiers?.map(link => link.modifier_id) ?? []
+    return flavorModifiers.filter(m => allowedIds.includes(m.id))
+  }, [selectedProduct, flavorModifiers])
+
+  const availableExtras = useMemo(() => {
+    if (!selectedProduct) return []
+    const allowedIds = selectedProduct.allowed_modifiers?.map(link => link.modifier_id) ?? []
+    return extraModifiers.filter(m => allowedIds.includes(m.id))
+  }, [selectedProduct, extraModifiers])
+
+  // Get default/included modifiers based on product name and variant
+  const defaultModifierIds = useMemo(() => {
+    if (!selectedProduct || !selectedVariant) return []
+
+    const productName = selectedProduct.name.toLowerCase()
+    const variantName = selectedVariant.name.toLowerCase()
+
+    // Helper to find modifier IDs by name
+    const findModifiersByNames = (names: string[]) => {
+      return names
+        .map(name => modifiers.find(m => m.name.toLowerCase().includes(name.toLowerCase()))?.id)
+        .filter(Boolean) as string[]
+    }
+
+    let defaultFlavors: string[] = []
+
+    // CASA variant has special rules
+    if (variantName === 'casa') {
+      const isSea = productName.includes('camarón') || productName.includes('camaron') ||
+        productName.includes('salmón') || productName.includes('salmon')
+      const isResPollo = productName.includes('res') || productName.includes('pollo')
+
+      if (isSea) {
+        // Casa de Mar: Mojo + Diabla + Chimi
+        defaultFlavors = findModifiersByNames(['Mojo', 'Diabla', 'Chimi'])
+      } else if (isResPollo) {
+        // Casa de Res/Pollo: Habanero + Chimi + Mojo
+        defaultFlavors = findModifiersByNames(['Habanero', 'Chimi', 'Mojo'])
+      } else if (productName.includes('portobello')) {
+        // Casa Portobello: Chimi + Mojo
+        defaultFlavors = findModifiersByNames(['Chimi', 'Mojo'])
       }
-      return out
-    },
-    [flavorsMap],
-  )
+    } else {
+      // Normal/Doble/Light variants
+      const isSea = productName.includes('camarón') || productName.includes('camaron') ||
+        productName.includes('salmón') || productName.includes('salmon')
+      const isPortobello = productName.includes('portobello')
 
-  const houseRule = useMemo(() => {
-    const entry = houseMap?.[proteinId]
-    if (!entry) return null
-
-    const price = Number(entry.price ?? 0)
-
-    if (Array.isArray(entry.includedIds) && entry.includedIds.length) {
-      const cleanIds = entry.includedIds.filter(Boolean)
-      const includedIds = uniqueByName(cleanIds)
-      if (!includedIds.length && !price) return null
-      return { price, includedIds }
+      if (isSea) {
+        // Camarón/Salmón: Mojo + Diabla
+        defaultFlavors = findModifiersByNames(['Mojo', 'Diabla'])
+      } else if (isPortobello) {
+        // Portobello: Chimi + Mojo
+        defaultFlavors = findModifiersByNames(['Chimi', 'Mojo'])
+      }
+      // Res y Pollo no tienen defaults en variantes normales
     }
 
-    const collectedNames: string[] = []
-    const secondary = entry?.default_flavors_json?.secondary
-    if (Array.isArray(secondary)) collectedNames.push(...secondary)
+    return defaultFlavors
+  }, [selectedProduct, selectedVariant, modifiers])
 
-    const pname = (protein?.name ?? '').toLowerCase()
-    const isResPollo = pname.includes('res') || pname.includes('pollo')
-    const isMar =
-      pname.includes('camarón') || pname.includes('camaron') || pname.includes('salmón') || pname.includes('salmon')
-
-    if (isResPollo) collectedNames.push('Habanero', 'Chimi', 'Mojo')
-    if (isMar) collectedNames.push('Chimi', 'Mojo', 'Diabla')
-
-    const initialIds = collectedNames
-      .map((n) => flavorIdByName.get(String(n).trim().toLowerCase()))
-      .filter(Boolean) as string[]
-
-    const includedIds = uniqueByName(initialIds)
-    if (!includedIds.length && !price) return null
-    return { price, includedIds }
-  }, [houseMap, proteinId, protein?.name, flavorIdByName, flavorsMap])
-
-  const hasCasa = !!houseRule
-
-  const houseIncludedSet = useMemo(
-    () => new Set(houseRule?.includedIds ?? []),
-    [houseRule]
-  )
-
+  // Auto-select default modifiers when product or variant changes
   useEffect(() => {
-    if (variant === 'casa') {
-      if (houseRule) setSelectedFlavorIds(Array.from(houseIncludedSet))
+    if (defaultModifierIds.length > 0) {
+      setSelectedModifierIds(defaultModifierIds)
     } else {
-      setSelectedFlavorIds(defaultFlavorIds)
+      setSelectedModifierIds([])
     }
-  }, [variant, proteinId, houseRule, houseIncludedSet, defaultFlavorIds])
+  }, [defaultModifierIds])
 
-  const burgerPricing = useMemo(() => {
-    if (!protein) return null
+  // Calculate pricing
+  const currentItemCost = useMemo(() => {
+    if (!selectedVariant) return 0
 
-    if (variant === 'casa') {
-      if (!houseRule) return null
-      const selectedExcludingIncluded = selectedFlavorIds.filter(
-        (id) => !houseIncludedSet.has(id),
-      )
-      const pricing = calcHouseBurgerPrice({
-        housePrice: Number(houseRule.price),
-        includedFlavorIds: Array.from(houseIncludedSet),
-        selectedFlavorIds: selectedExcludingIncluded,
-        flavorsMap,
-        extras: selectedExtras,
-      })
-      return { ...pricing, flavorsIncluded: Array.from(houseIncludedSet) }
-    }
+    let total = selectedVariant.price
 
-    if (variant === 'torre') {
-      const price = protein.name.toLowerCase().includes('doble')
-        ? (torreMap['Torre Doble'] ?? 130)
-        : (torreMap['Torre Pizza'] ?? 100)
-      return calcTorrePrice({
-        torrePrice: price,
-        addedFlavorIds: selectedFlavorIds,
-        flavorsMap,
-        extras: selectedExtras,
-      })
-    }
+    // Add modifier costs (flavors/extras not included)
+    selectedModifierIds.forEach(modId => {
+      const modifier = modifiers.find(m => m.id === modId)
+      if (!modifier) return
 
-    const base =
-      variant === 'doble'
-        ? protein.price_double
-        : variant === 'light'
-        ? protein.price_light
-        : protein.price_base
+      // Check if it's a default modifier (included for free)
+      const isDefault = defaultModifierIds.includes(modId)
 
-    const selected = selectedFlavorIds
-    let flavorsIncludedIds: string[] = []
-    if (defaultFlavorIds.length > 0) {
-      const defaultsSet = new Set(defaultFlavorIds)
-      flavorsIncludedIds = selected.filter((id) => defaultsSet.has(id))
-    } else {
-      const freeCount = variant === 'doble' ? 2 : 1
-      flavorsIncludedIds = selected.slice(0, freeCount)
-    }
-
-    const includedSet = new Set(flavorsIncludedIds)
-    const flavorsChargedIds = selected.filter((id) => !includedSet.has(id))
-    const flavorsCharged = flavorsChargedIds.map((id) => {
-      const f = flavorsMap[id]
-      const amount =
-        typeof f?.price_extra === 'number'
-          ? f.price_extra
-          : f?.intensity === 'extremo'
-          ? 10
-          : 5
-      return { id, amount }
+      if (!isDefault) {
+        total += modifier.price
+      }
     })
 
-    const flavorsCost = flavorsCharged.reduce((s, x) => s + x.amount, 0)
-    const extras = selectedExtras.map((e) => ({ id: e.id, amount: e.price }))
-    const extrasCost = extras.reduce((s, x) => s + x.amount, 0)
+    return total
+  }, [selectedVariant, selectedModifierIds, modifiers, defaultModifierIds])
 
-    return {
-      base,
-      total: base + flavorsCost + extrasCost,
-      flavorsIncluded: flavorsIncludedIds,
-      flavorsCharged,
-      extras,
-    }
-  }, [
-    protein,
-    variant,
-    selectedFlavorIds,
-    defaultFlavorIds,
-    selectedExtras,
-    flavorsMap,
-    houseRule,
-    houseIncludedSet,
-    torreMap,
-  ])
+  // Calculate cart total
+  const cartTotal = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      let itemTotal = item.variant.price
+      item.selectedModifiers.forEach(({ modifier, quantity }) => {
+        itemTotal += modifier.price * quantity
+      })
+      return sum + (itemTotal * item.quantity)
+    }, 0)
+  }, [cart])
 
-  const papasPricing = useMemo(() => {
-    if (!simulatePapas || !papasCfg) return null
-    return calcPapasItalianasPrice({
-      basePrice: papasCfg.basePrice,
-      flavorIds: papasFlavorIds,
-      flavorsMap,
-    })
-  }, [simulatePapas, papasCfg, papasFlavorIds, flavorsMap])
+  // Handlers
+  const handleProductChange = (productId: string) => {
+    setSelectedProductId(productId)
+    const product = products.find(p => p.id === productId)
+    setSelectedVariantId(product?.variants?.[0]?.id ?? '')
+    setSelectedModifierIds([])
+  }
 
-  const toggleFlavor = (id: string) =>
-    setSelectedFlavorIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+  const handleVariantChange = (variantId: string) => {
+    setSelectedVariantId(variantId)
+  }
+
+  const toggleModifier = (modifierId: string) => {
+    setSelectedModifierIds(prev =>
+      prev.includes(modifierId)
+        ? prev.filter(id => id !== modifierId)
+        : [...prev, modifierId]
     )
+  }
 
-  const toggleExtra = (e: Extra) =>
-    setSelectedExtras((prev) => {
-      const exists = prev.find((x) => x.id === e.id)
-      return exists ? prev.filter((x) => x.id !== e.id) : [...prev, e]
-    })
+  const addToCart = () => {
+    if (!selectedProduct || !selectedVariant) return
 
-  const togglePapasFlavor = (id: string) =>
-    setPapasFlavorIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    const selectedMods = selectedModifierIds.map(modId => ({
+      modifier: modifiers.find(m => m.id === modId)!,
+      quantity: 1
+    })).filter(item => item.modifier)
 
-  const flavorsByGroup = useMemo(() => {
-    const groups: Record<string, Flavor[]> = { Picante: [], Dulce: [], Salado: [], Otros: [] }
-    for (const f of flavors) {
-      const tag = (f.tags?.[0] ?? '').toLowerCase()
-      if (tag === 'picante') groups['Picante'].push(f)
-      else if (tag === 'dulce') groups['Dulce'].push(f)
-      else if (tag === 'salado') groups['Salado'].push(f)
-      else groups['Otros'].push(f)
-    }
-    Object.keys(groups).forEach((k) => groups[k].sort((a, b) => a.name.localeCompare(b.name)))
-    return groups
-  }, [flavors])
+    setCart(prev => [...prev, {
+      product: selectedProduct,
+      variant: selectedVariant,
+      selectedModifiers: selectedMods,
+      quantity: 1
+    }])
 
-  const isIncludedForUI = (flavorId: string) =>
-    variant === 'casa' ? houseIncludedSet.has(flavorId) : defaultFlavorIds.includes(flavorId)
+    // Reset selections
+    setSelectedModifierIds([])
+  }
+
+  const removeFromCart = (index: number) => {
+    setCart(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Categorize products for display
+  const burgers = products.filter(p => p.category === 'protein_base' || p.category === 'special')
+  const sides = products.filter(p => p.category === 'side')
+  const drinks = products.filter(p => p.category === 'drink')
 
   return (
-    <div className="grid gap-6">
-      {/* fila 1: Proteína + Variante (dos columnas, ocupan el ancho de Sabores) */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card title="1) Proteína">
-          <div className="grid gap-2">
-            {proteins.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setProteinId(p.id)}
-                className={`btn w-full text-left border ${
-                  proteinId === p.id ? 'border-amber-600 bg-amber-50' : 'hover:bg-gray-50'
-                }`}
-                aria-pressed={proteinId === p.id}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{p.name}</span>
-                  <span className="protein-price">Base ${p.price_base}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </Card>
+    <div className="grid lg:grid-cols-3 gap-8">
+      {/* LEFT COLUMN: Product Selection */}
+      <div className="lg:col-span-2 space-y-6">
 
-        <Card title="2) Variante">
-          <div className="grid grid-cols-2 gap-2">
-            {(['normal', 'doble', 'light', 'casa', 'torre'] as VariantKind[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => {
-                  if (v === 'casa' && !hasCasa) return
-                  setVariant(v)
-                }}
-                className={`px-3 py-2 rounded-xl border ${
-                  variant === v ? 'border-amber-600 bg-amber-50' : 'hover:bg-gray-50'
-                }`}
-                aria-disabled={v === 'casa' && !hasCasa}
-                disabled={v === 'casa' && !hasCasa}
-              >
-                <span className="capitalize">{v}</span>
-              </button>
-            ))}
-          </div>
-          <div className="mt-2 text-xs text-gray-500">
-            {variant === 'casa' && houseRule ? (
-              <p>
-                Casa incluye: <strong>{houseIncludedSet.size}</strong> sabor(es) fijos.
-              </p>
-            ) : defaultFlavorIds.length > 0 ? (
-              <p>
-                Esta proteína incluye por defecto: <strong>{defaultFlavorIds.length}</strong> sabor(es).
-              </p>
-            ) : (
-              <p>
-                Sin defaults: incluye <strong>{variant === 'doble' ? '2' : '1'}</strong> sabor(es) gratis.
-              </p>
+        {/* 1. Product Selection */}
+        <section className="bg-white rounded-xl p-6 shadow-sm border">
+          <h2 className="text-xl font-bold text-[#3B1F1A] mb-4">1. Selecciona tu Producto</h2>
+
+          <div className="space-y-4">
+            {burgers.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2">Hamburguesas</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {burgers.map(product => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductChange(product.id)}
+                      className={`p-3 rounded-lg border-2 text-left transition ${selectedProductId === product.id
+                        ? 'border-[#C08A3E] bg-amber-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                    >
+                      <div className="font-semibold text-sm">{product.name}</div>
+                      <div className="text-xs text-gray-500">
+                        Desde ${Math.min(...(product.variants?.map(v => v.price) ?? [0]))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sides.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2">Acompañamientos</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {sides.map(product => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductChange(product.id)}
+                      className={`p-3 rounded-lg border-2 text-left transition ${selectedProductId === product.id
+                        ? 'border-[#C08A3E] bg-amber-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                    >
+                      <div className="font-semibold text-sm">{product.name}</div>
+                      <div className="text-xs text-gray-500">
+                        ${product.variants?.[0]?.price ?? 0}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {drinks.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2">Bebidas</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {drinks.map(product => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductChange(product.id)}
+                      className={`p-2 rounded-lg border-2 text-center transition ${selectedProductId === product.id
+                        ? 'border-[#C08A3E] bg-amber-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                    >
+                      <div className="font-semibold text-xs">{product.name}</div>
+                      <div className="text-xs text-gray-500">
+                        ${product.variants?.[0]?.price ?? 0}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-        </Card>
+        </section>
+
+        {/* 2. Variant Selection */}
+        {selectedProduct && selectedProduct.variants && selectedProduct.variants.length > 0 && (
+          <section className="bg-white rounded-xl p-6 shadow-sm border">
+            <h2 className="text-xl font-bold text-[#3B1F1A] mb-4">2. Elige Tamaño/Variante</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {selectedProduct.variants.map(variant => (
+                <button
+                  key={variant.id}
+                  onClick={() => handleVariantChange(variant.id)}
+                  className={`p-4 rounded-lg border-2 transition ${selectedVariantId === variant.id
+                    ? 'border-[#C08A3E] bg-amber-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  <div className="font-bold capitalize text-sm">{variant.name}</div>
+                  <div className="text-lg font-bold text-[#C08A3E] mt-1">${variant.price}</div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 3. Extras (Queso, Tocino, Carne) */}
+        {selectedProduct && availableExtras.length > 0 && (
+          <section className="bg-white rounded-xl p-6 shadow-sm border">
+            <h2 className="text-xl font-bold text-[#3B1F1A] mb-4">3. Modificadores/Extras</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {availableExtras.map((modifier: V2Modifier) => {
+                const isSelected = selectedModifierIds.includes(modifier.id)
+
+                return (
+                  <label
+                    key={modifier.id}
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition ${isSelected ? 'bg-amber-50 border-amber-300' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleModifier(modifier.id)}
+                      className="w-5 h-5"
+                    />
+                    <span className="flex-1 font-medium">{modifier.name}</span>
+                    <span className="text-sm font-bold text-[#C08A3E]">
+                      +${modifier.price}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* 4. Sabores (Chimi, Mojo, Diabla, etc.) */}
+        {selectedProduct && availableFlavors.length > 0 && (
+          <section className="bg-white rounded-xl p-6 shadow-sm border">
+            <h2 className="text-xl font-bold text-[#3B1F1A] mb-4">4. Sabores</h2>
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                {defaultModifierIds.length > 0 ? (
+                  <>
+                    💡 <strong>Sabores incluidos por defecto:</strong>{' '}
+                    {defaultModifierIds.map(id => {
+                      const mod = modifiers.find(m => m.id === id)
+                      return mod?.name
+                    }).filter(Boolean).join(', ')}
+                    {'. '}
+                    Puedes agregar más sabores por <strong>+$5</strong> cada uno.
+                  </>
+                ) : (
+                  <>
+                    💡 Esta hamburguesa no incluye sabores por defecto. Puedes agregar los que quieras por <strong>+$5</strong> cada uno.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {availableFlavors.map((modifier: V2Modifier) => {
+                const isSelected = selectedModifierIds.includes(modifier.id)
+                const isDefault = defaultModifierIds.includes(modifier.id)
+
+                return (
+                  <label
+                    key={modifier.id}
+                    className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition ${isSelected
+                      ? isDefault
+                        ? 'bg-green-50 border-green-300'
+                        : 'bg-amber-50 border-amber-300'
+                      : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleModifier(modifier.id)}
+                      className="w-4 h-4"
+                    />
+                    <span className="flex-1 text-sm">{modifier.name}</span>
+                    <span className={`text-xs font-semibold ${isDefault ? 'text-green-700' : 'text-[#C08A3E]'
+                      }`}>
+                      {isDefault ? '✓ Incluido' : `+$${modifier.price}`}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Add to Cart Button */}
+        {selectedVariant && (
+          <button
+            onClick={addToCart}
+            className="w-full bg-[#C08A3E] text-white font-bold py-4 rounded-xl hover:bg-[#9F6B2A] transition shadow-lg"
+          >
+            Agregar al Pedido - ${currentItemCost}
+          </button>
+        )}
       </div>
 
-      {/* fila 2: Sabores (ancho completo) */}
-      <Card title="3) Sabores">
-        <div className="grid md:grid-cols-3 gap-6">
-          {Object.entries(flavorsByGroup).map(([group, list]) => (
-            <div key={group}>
-              <h3 className="font-display text-sm tracking-wide mb-2 text-[--primary]">{group}</h3>
-              <div className="grid gap-2">
-                {list.map((f) => {
-                  const active = selectedFlavorIds.includes(f.id)
-                  const isDefault = isIncludedForUI(f.id)
-                  return (
-                    <label key={f.id} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={active} onChange={() => toggleFlavor(f.id)} />
-                      <span>{f.name}</span>
-                      {isDefault ? (
-                        <Badge>Incluido</Badge>
-                      ) : (
-                        <Badge>{f.intensity === 'extremo' ? '+$10' : '+$5'}</Badge>
-                      )}
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+      {/* RIGHT COLUMN: Cart Summary */}
+      <div className="lg:col-span-1">
+        <div className="bg-white rounded-xl p-6 shadow-sm border sticky top-4">
+          <h2 className="text-xl font-bold text-[#3B1F1A] mb-4">Tu Pedido</h2>
 
-      {/* fila 3: Extras (izquierda) + Resumen (derecha) */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card title="4) Extras">
-          <div className="grid gap-2">
-            {EXTRAS.map((e) => {
-              const active = !!selectedExtras.find((x) => x.id === e.id)
-              return (
-                <label key={e.id} className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={active} onChange={() => toggleExtra(e)} />
-                  <span>{e.name}</span>
-                  <Badge>${e.price}</Badge>
-                </label>
-              )
-            })}
-          </div>
-        </Card>
-
-        <Card title="Resumen hamburguesa">
-          {burgerPricing ? (
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <div className="text-sm">Base</div>
-                <div className="text-xl font-semibold">${burgerPricing.base}</div>
-              </div>
-              <div>
-                <div className="text-sm mb-1">Sabores</div>
-                <ul className="text-sm space-y-1">
-                  {burgerPricing.flavorsIncluded.map((id: string) => (
-                    <li key={id} className="flex items-center gap-2">
-                      <Badge>Incluido</Badge>
-                      <span>{flavorsMap[id]?.name ?? id}</span>
-                    </li>
-                  ))}
-                  {burgerPricing.flavorsCharged.map((c: { id: string; amount: number }) => (
-                    <li key={c.id} className="flex items-center gap-2">
-                      <Badge>+${c.amount}</Badge>
-                      <span>{flavorsMap[c.id]?.name ?? c.id}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <div className="text-sm mb-1">Extras</div>
-                <ul className="text-sm space-y-1">
-                  {burgerPricing.extras.length ? (
-                    burgerPricing.extras.map((e: { id: string; amount: number }) => (
-                      <li key={e.id} className="flex items-center gap-2">
-                        <Badge>+${e.amount}</Badge>
-                        <span>{EXTRAS.find((x) => x.id === e.id)?.name ?? e.id}</span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="text-gray-500">Sin extras</li>
-                  )}
-                </ul>
-              </div>
-            </div>
+          {cart.length === 0 ? (
+            <p className="text-gray-500 text-sm text-center py-8">
+              Tu carrito está vacío.<br />
+              Agrega productos para empezar.
+            </p>
           ) : (
-            <div className="text-gray-500 text-sm">Selecciona opciones para ver el total.</div>
-          )}
-
-          <div className="mt-4 flex items-center justify-between border-t pt-3">
-            <div className="text-sm text-gray-600">
-              Variante: <strong className="capitalize">{variant}</strong>
-            </div>
-            <div className="text-2xl font-display font-bold text-[--primary]">
-              Total: ${burgerPricing?.total ?? 0}
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* fila 4: Papas Italianas (opcional) — se mantiene como en tu código */}
-      {papasCfg && (
-        <Card title="Papas Italianas (opcional)">
-          <div className="flex items-center gap-4 mb-3">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={simulatePapas}
-                onChange={() => setSimulatePapas((v) => !v)}
-              />
-              <span>Agregar Papas Italianas</span>
-            </label>
-            <Badge>Base ${papasCfg.basePrice}</Badge>
-          </div>
-
-          {simulatePapas && (
-            <>
-              <div className="grid md:grid-cols-3 gap-6">
-                {Object.entries(flavorsByGroup).map(([group, list]) => (
-                  <div key={group}>
-                    <h3 className="font-display text-sm tracking-wide mb-2 text-[--primary]">
-                      {group}
-                    </h3>
-                    <div className="grid gap-2">
-                      {list.map((f) => {
-                        const active = papasFlavorIds.includes(f.id)
-                        return (
-                          <label key={f.id} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={active}
-                              onChange={() => togglePapasFlavor(f.id)}
-                            />
-                            <span>{f.name}</span>
-                            <Badge>{f.intensity === 'extremo' ? '+$10' : '+$5'}</Badge>
-                          </label>
-                        )
-                      })}
+            <div className="space-y-4">
+              {cart.map((item, index) => (
+                <div key={index} className="border-b pb-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-semibold text-sm">{item.product.name}</div>
+                      <div className="text-xs text-gray-500 capitalize">{item.variant.name}</div>
                     </div>
+                    <button
+                      onClick={() => removeFromCart(index)}
+                      className="text-red-500 text-xs hover:text-red-700"
+                    >
+                      ✕
+                    </button>
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-4 flex items-center justify-between border-t pt-3">
-                <div className="text-sm text-gray-600">
-                  Primer sabor incluido; adicionales +$5 / +$10 Extremo.
+                  {item.selectedModifiers.length > 0 && (
+                    <div className="text-xs text-gray-600 space-y-1 ml-2">
+                      {item.selectedModifiers.map((mod, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span>+ {mod.modifier.name}</span>
+                          <span>${mod.modifier.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-sm font-bold text-right mt-2">
+                    ${item.variant.price + item.selectedModifiers.reduce((s, m) => s + m.modifier.price, 0)}
+                  </div>
                 </div>
-                <div className="text-2xl font-bold">
-                  Total Papas: ${papasPricing?.total ?? papasCfg.basePrice}
+              ))}
+
+              <div className="pt-4 border-t">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="font-bold text-lg">Total</span>
+                  <span className="font-bold text-2xl text-[#C08A3E]">${cartTotal}</span>
                 </div>
+
+                <button
+                  onClick={() => setCart([])}
+                  className="w-full bg-gray-200 text-gray-700 font-semibold py-2 rounded-lg hover:bg-gray-300 transition text-sm"
+                >
+                  Limpiar Carrito
+                </button>
               </div>
-            </>
+            </div>
           )}
-        </Card>
-      )}
+        </div>
+      </div>
     </div>
   )
 }
