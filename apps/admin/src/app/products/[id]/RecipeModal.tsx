@@ -17,6 +17,7 @@ export function RecipeModal({ variant, onClose }: Props) {
   // Formulario local
   const [supplyId, setSupplyId] = useState('')
   const [qty, setQty] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('')
 
   // Cargar datos al abrir
   useEffect(() => {
@@ -30,18 +31,65 @@ export function RecipeModal({ variant, onClose }: Props) {
     })
   }, [variant.id])
 
+  // Resetear unidad cuando cambia el insumo
+  useEffect(() => {
+    if (!supplyId) {
+      setSelectedUnit('')
+      return
+    }
+    const supply = supplies.find(s => s.id === supplyId)
+    if (supply) {
+      // Por defecto seleccionamos la unidad base del insumo
+      setSelectedUnit(supply.unit)
+    }
+  }, [supplyId, supplies])
+
   // Refrescar lista
   const refresh = async () => {
     const data = await getVariantIngredients(variant.id)
     setIngredients(data)
   }
 
+  // Lógica de conversión
+  const getUnitOptions = (baseUnit: string) => {
+    switch (baseUnit) {
+      case 'kg': return [{ value: 'kg', label: 'Kilogramos (kg)' }, { value: 'g', label: 'Gramos (g)' }]
+      case 'lt': return [{ value: 'lt', label: 'Litros (lt)' }, { value: 'ml', label: 'Mililitros (ml)' }]
+      case 'g': return [{ value: 'g', label: 'Gramos (g)' }, { value: 'kg', label: 'Kilogramos (kg)' }]
+      case 'ml': return [{ value: 'ml', label: 'Mililitros (ml)' }, { value: 'lt', label: 'Litros (lt)' }]
+      default: return [{ value: baseUnit, label: baseUnit }]
+    }
+  }
+
+  const convertToStorageUnit = (quantity: number, fromUnit: string, toBaseUnit: string) => {
+    if (fromUnit === toBaseUnit) return quantity
+
+    // De gramos a kilos
+    if (fromUnit === 'g' && toBaseUnit === 'kg') return quantity / 1000
+    // De mililitros a litros
+    if (fromUnit === 'ml' && toBaseUnit === 'lt') return quantity / 1000
+
+    // De kilos a gramos (raro pero posible)
+    if (fromUnit === 'kg' && toBaseUnit === 'g') return quantity * 1000
+    // De litros a mililitros
+    if (fromUnit === 'lt' && toBaseUnit === 'ml') return quantity * 1000
+
+    return quantity
+  }
+
   const handleAdd = async () => {
-    if (!supplyId || !qty) return
+    if (!supplyId || !qty || !selectedUnit) return
+
+    const supply = supplies.find(s => s.id === supplyId)
+    if (!supply) return
+
+    const finalQty = convertToStorageUnit(parseFloat(qty), selectedUnit, supply.unit)
+
     startTransition(async () => {
-      await addIngredientToVariant(variant.id, supplyId, parseFloat(qty))
+      await addIngredientToVariant(variant.id, supplyId, finalQty)
       setSupplyId('')
       setQty('')
+      // No reseteamos selectedUnit aquí para que no parpadee feo, se reseteará con el useEffect si cambia supplyId
       await refresh()
     })
   }
@@ -56,6 +104,10 @@ export function RecipeModal({ variant, onClose }: Props) {
 
   // Calcular costo
   const totalCost = ingredients.reduce((sum, item) => sum + (item.supply?.cost_per_unit * item.quantity), 0)
+
+  // Obtener opciones de unidad para el insumo seleccionado
+  const currentSupply = supplies.find(s => s.id === supplyId)
+  const unitOptions = currentSupply ? getUnitOptions(currentSupply.unit) : []
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -109,7 +161,7 @@ export function RecipeModal({ variant, onClose }: Props) {
         {/* Footer: Formulario Agregar */}
         <div className="p-4 bg-gray-50 border-t space-y-3">
           <div className="flex gap-2">
-            <select 
+            <select
               className="flex-1 p-2 border rounded text-sm"
               value={supplyId}
               onChange={e => setSupplyId(e.target.value)}
@@ -119,24 +171,42 @@ export function RecipeModal({ variant, onClose }: Props) {
                 <option key={s.id} value={s.id}>{s.name} (${s.cost_per_unit}/{s.unit})</option>
               ))}
             </select>
-            <input 
-              type="number" 
-              placeholder="Cant." 
-              className="w-20 p-2 border rounded text-sm"
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="Cant."
+              className="w-24 p-2 border rounded text-sm"
               step="0.001"
               value={qty}
               onChange={e => setQty(e.target.value)}
             />
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="flex-1 py-2 border rounded text-gray-600 font-bold hover:bg-gray-100">Cerrar</button>
-            <button 
-              onClick={handleAdd} 
-              disabled={!supplyId || !qty || isPending}
+
+            {/* Selector de Unidad Inteligente */}
+            <select
+              className="w-32 p-2 border rounded text-sm bg-white disabled:bg-gray-100"
+              value={selectedUnit}
+              onChange={e => setSelectedUnit(e.target.value)}
+              disabled={!supplyId}
+            >
+              {!supplyId && <option value="">Unidad</option>}
+              {unitOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleAdd}
+              disabled={!supplyId || !qty || !selectedUnit || isPending}
               className="flex-1 py-2 bg-purple-600 text-white rounded font-bold hover:bg-purple-700 disabled:opacity-50"
             >
-              {isPending ? 'Guardando...' : 'Agregar'}
+              {isPending ? '...' : 'Agregar'}
             </button>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-700 underline">Cerrar Ventana</button>
           </div>
         </div>
       </div>

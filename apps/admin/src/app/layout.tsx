@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AdminNav } from "@/components/AdminNav"; //
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Admin - Trailer Burger Hall",
-  description: "Admin - Trailer Burger Hall",
+  description: "Sistema de Gestión",
 };
 
 export default function RootLayout({
@@ -23,11 +24,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+    <html lang="es">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}>
+        <AdminNav />
+        <main>
+          {children}
+        </main>
       </body>
     </html>
   );

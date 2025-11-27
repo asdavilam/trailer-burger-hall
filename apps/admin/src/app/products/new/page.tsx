@@ -44,7 +44,7 @@ export default async function NewProductPage() {
                     <label className="block text-sm font-bold text-gray-700 mb-2">Categoría</label>
                     <select name="category" required className="w-full p-3 border rounded-lg bg-white">
                         <option value="protein_base">Proteína (Base de Burger)</option>
-                        <option value="special">Especial (Plato Fuerte)</option>
+                        <option value="special">Especial</option>
                         <option value="side">Acompañamiento / Entrada</option>
                         <option value="drink">Bebida</option>
                         <option value="extra">Extra Suelto</option>

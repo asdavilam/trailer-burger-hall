@@ -25,9 +25,6 @@ export default async function TeamPage() {
           <h1 className="text-3xl font-bold text-gray-900">Equipo de Trabajo 👥</h1>
           <p className="text-gray-500">Administración de usuarios y permisos</p>
         </div>
-        <div className="flex items-center gap-4">
-          <LogoutBtn />
-        </div>
       </div>
 
       {/* Formulario de Crear Usuario */}

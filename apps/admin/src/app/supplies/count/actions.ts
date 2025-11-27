@@ -35,20 +35,21 @@ export async function getMyAssignments() {
   }))
 }
 
-// 2. Guardar el conteo (AQUÍ ESTÁ EL CAMBIO)
-export async function submitDailyCount(counts: Record<string, number>, comments?: string) {
+// 2. Guardar el conteo
+export async function submitDailyCount(counts: Record<string, number>, comments?: string, date?: string) {
   // A. Verificamos identidad con el cliente normal (Seguridad)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autorizado' }
 
-  const today = new Date().toISOString().split('T')[0]
+  // Usamos la fecha enviada por el cliente (Local) o fallback a UTC
+  const logDate = date || new Date().toISOString().split('T')[0]
   const updates = []
 
   // B. Usamos la Llave Maestra para escribir (Saltamos RLS)
   // Porque confiamos en que esta función validó al usuario arriba.
   for (const [supplyId, finalCount] of Object.entries(counts)) {
-    
+
     // 1. Leemos el stock actual para calcular diferencias
     // (Podemos usar supabaseAdmin para asegurar lectura consistente)
     const { data: supply } = await supabaseAdmin
@@ -56,13 +57,13 @@ export async function submitDailyCount(counts: Record<string, number>, comments?
       .select('current_stock')
       .eq('id', supplyId)
       .single()
-    
+
     const currentStock = supply?.current_stock || 0
-    
+
     // 2. Insertamos el LOG
     updates.push(
       supabaseAdmin.from('inventory_logs').insert({
-        date: today,
+        date: logDate,
         supply_id: supplyId,
         user_id: user.id,
         initial_stock: currentStock,
@@ -86,7 +87,7 @@ export async function submitDailyCount(counts: Record<string, number>, comments?
   try {
     // Ejecutamos todas las promesas y verificamos si hubo error
     const results = await Promise.all(updates)
-    
+
     // Verificar si alguna falló (Supabase devuelve { error } en lugar de lanzar excepción)
     const errors = results.filter(r => r.error)
     if (errors.length > 0) {

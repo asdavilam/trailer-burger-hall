@@ -193,3 +193,42 @@ export async function createProduct(formData: FormData) {
   // 3. Redirigir al Editor para terminar de configurarlo
   redirect(`/products/${data.id}`)
 }
+
+// 6. OBTENER RECETARIO COMPLETO (Reporte de Costos)
+export async function getFullRecipesReport() {
+  const supabase = await createClient()
+
+  // Traemos TODO: Productos -> Variantes -> Ingredientes -> Datos del Insumo
+  const { data, error } = await supabase
+    .from('v2_products')
+    .select(`
+      id,
+      name,
+      category,
+      is_active,
+      variants:v2_product_variants(
+        id,
+        name,
+        price,
+        ingredients:v2_product_ingredients(
+          id,
+          quantity,
+          supply:supplies(
+            id,
+            name,
+            unit,
+            cost_per_unit
+          )
+        )
+      )
+    `)
+    .eq('is_active', true)
+    .order('name')
+
+  if (error) {
+    console.error(error)
+    return []
+  }
+  
+  return data
+}

@@ -9,7 +9,7 @@ export async function getAssignmentData() {
   const supabase = await createClient()
 
   const [usersRes, suppliesRes, assignmentsRes] = await Promise.all([
-    supabase.from('user_profiles').select('*').in('role', ['staff', 'kitchen']).eq('is_active', true),
+    supabase.from('user_profiles').select('*').in('role', ['staff', 'kitchen', 'admin']).eq('is_active', true),
     supabase.from('supplies').select('*').order('name'),
     supabase.from('inventory_assignments').select('*')
   ])
@@ -26,7 +26,7 @@ export async function saveUserAssignments(userId: string, supplyIds: string[]) {
   const supabase = await createClient()
 
   // Estrategia: "Borrar y Re-crear" (Es lo más seguro para sincronizar listas)
-  
+
   // A. Borrar todo lo que este usuario tenía asignado
   const { error: deleteError } = await supabase
     .from('inventory_assignments')

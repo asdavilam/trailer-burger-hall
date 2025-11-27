@@ -29,59 +29,63 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // 1. OBTENER USUARIO DE AUTH
+  // 1. OBTENER USUARIO
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // REGLA 1: Protección básica de sesión
-  // Si no hay usuario y no es login, mandar a login.
-  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+  const path = request.nextUrl.pathname
+
+  // REGLA 1: Protección básica (Si no hay user, al login)
+  if (!user && !path.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // REGLA 2: Si ya está en Login pero tiene sesión, mandar al Dashboard
-  if (user && request.nextUrl.pathname.startsWith('/login')) {
+  // REGLA 2: Si ya tiene sesión y está en Login, sacar de ahí
+  if (user && path.startsWith('/login')) {
     const url = request.nextUrl.clone()
+    // Por defecto al home, la Regla 4 lo corregirá si es staff luego
     url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
-  // --- 🔒 NUEVA SEGURIDAD AVANZADA ---
+  // --- 🔒 SEGURIDAD AVANZADA ---
   
   if (user) {
-    // 2. Consultar el PERFIL para ver Rol y Estado
-    // (Esto es rápido en Supabase)
+    // Consultar Perfil (Rol y Estado)
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role, is_active')
       .eq('id', user.id)
       .single()
 
-    // REGLA 3: Usuario Desactivado ("Baneado")
-    // Si el perfil existe y is_active es falso...
+    // REGLA 3: Usuario Baneado/Desactivado
     if (profile && profile.is_active === false) {
-      // Opcional: Cerrar sesión forzada (signOut no funciona bien en middleware, mejor redirigir)
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('error', 'Tu cuenta ha sido desactivada.')
       
-      // Borramos las cookies de sesión para sacarlo de verdad
       const response = NextResponse.redirect(url)
+      // Limpiar cookies manualmente para asegurar cierre
       response.cookies.getAll().forEach(cookie => {
         if (cookie.name.startsWith('sb-')) response.cookies.delete(cookie.name)
       })
       return response
     }
 
-    // REGLA 4: Protección de Rutas por Rol (RBAC)
-    // Si intenta entrar a /team y NO es admin...
-    if (request.nextUrl.pathname.startsWith('/team') && profile?.role !== 'admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/' // Lo regresamos al Dashboard
-      return NextResponse.redirect(url)
+    // REGLA 4: Restricción Estricta (Staff = Solo Inventario) [MODIFICADO]
+    const isAdmin = profile?.role === 'admin'
+    
+    if (!isAdmin) {
+      // Si NO es admin... 
+      // y la ruta NO empieza con /supplies/count
+      if (!path.startsWith('/supplies/count')) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/supplies/count' // 👈 Redirección forzada a la única pantalla permitida
+        return NextResponse.redirect(url)
+      }
     }
   }
 
