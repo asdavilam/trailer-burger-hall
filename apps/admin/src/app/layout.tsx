@@ -13,9 +13,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport = {
+  themeColor: "#ea580c",
+};
+
 export const metadata: Metadata = {
   title: "Portal - Trailer Burger Hall",
   description: "Sistema de Gestión",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "TBH Admin",
+  },
 };
 
 export default function RootLayout({

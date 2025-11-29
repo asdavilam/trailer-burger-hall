@@ -51,19 +51,49 @@ export function AdminNav() {
     const supabase = createClient()
 
     useEffect(() => {
-        const getRole = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
+        const fetchRole = async (userId: string) => {
+            try {
                 const { data } = await supabase
                     .from('user_profiles')
                     .select('role')
-                    .eq('id', user.id)
+                    .eq('id', userId)
                     .single()
                 setRole(data?.role || null)
+            } catch (error) {
+                console.error('Error fetching role:', error)
+                setRole(null)
+            } finally {
+                setLoading(false)
             }
-            setLoading(false)
         }
-        getRole()
+
+        const init = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                await fetchRole(user.id)
+            } else {
+                setRole(null)
+                setLoading(false)
+            }
+        }
+
+        init()
+
+        // Escuchar cambios en la sesión (Login, Logout, Token refresh)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                // Si hay usuario, verificamos si cambió para actualizar el rol
+                // O simplemente refrescamos el rol para estar seguros
+                await fetchRole(session.user.id)
+            } else {
+                setRole(null)
+                setLoading(false)
+            }
+        })
+
+        return () => {
+            subscription.unsubscribe()
+        }
     }, [supabase])
 
     // Ocultar en login, update-password y auth callback
