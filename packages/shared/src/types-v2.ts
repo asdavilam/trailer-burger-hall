@@ -29,6 +29,8 @@ export type V2ProductVariant = {
   name: VariantType;
   price: number;
   is_active: boolean;
+  image_url?: string | null;
+  description?: string | null;
 };
 
 // 3. LOS MODIFICADORES (Sabores y Extras unificados)

@@ -50,51 +50,97 @@ export function AdminNav() {
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
 
+
+
     useEffect(() => {
+        let mounted = true
+        let retryCount = 0
+        const MAX_RETRIES = 5
+
         const fetchRole = async (userId: string) => {
             try {
-                const { data } = await supabase
+                const { data, error } = await supabase
                     .from('user_profiles')
                     .select('role')
                     .eq('id', userId)
                     .single()
-                setRole(data?.role || null)
+
+                if (!mounted) return
+
+                if (data) {
+                    setRole(data.role)
+                } else {
+                    setRole(null)
+                }
             } catch (error) {
-                console.error('Error fetching role:', error)
-                setRole(null)
+                console.error('AdminNav: Error fetching role:', error)
+                if (mounted) setRole(null)
             } finally {
-                setLoading(false)
+                if (mounted) setLoading(false)
+            }
+        }
+
+        const checkSession = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+
+                if (session?.user) {
+                    await fetchRole(session.user.id)
+                    return true
+                }
+                return false
+            } catch (e) {
+                console.error('AdminNav: Session check error', e)
+                return false
             }
         }
 
         const init = async () => {
+            // 1. Intento inmediato
+            const found = await checkSession()
+            if (found) return
+
+            // 2. Si falló, intentar con getUser (servidor)
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 await fetchRole(user.id)
-            } else {
-                setRole(null)
-                setLoading(false)
+                return
             }
+
+            // 3. Polling de emergencia (por si la sesión se hidrata tarde)
+            const interval = setInterval(async () => {
+                if (!mounted) return
+                retryCount++
+
+                const success = await checkSession()
+                if (success || retryCount >= MAX_RETRIES) {
+                    clearInterval(interval)
+                    if (!success && mounted) setLoading(false) // Rendirse y mostrar navbar vacío
+                }
+            }, 500) // Reintentar cada 500ms
         }
 
         init()
 
-        // Escuchar cambios en la sesión (Login, Logout, Token refresh)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user) {
-                // Si hay usuario, verificamos si cambió para actualizar el rol
-                // O simplemente refrescamos el rol para estar seguros
-                await fetchRole(session.user.id)
-            } else {
-                setRole(null)
-                setLoading(false)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+                if (session?.user) {
+                    fetchRole(session.user.id)
+                }
+            } else if (event === 'SIGNED_OUT') {
+                if (mounted) {
+                    setRole(null)
+                    setLoading(false)
+                }
             }
         })
 
         return () => {
+            mounted = false
             subscription.unsubscribe()
         }
-    }, [supabase])
+    }, [supabase, pathname]) // Agregamos pathname para re-verificar al navegar
 
     // Ocultar en login, update-password y auth callback
     if (pathname === '/login' || pathname === '/update-password' || pathname.startsWith('/auth')) return null

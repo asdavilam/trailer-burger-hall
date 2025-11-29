@@ -19,8 +19,8 @@ const montserrat = Montserrat({
 
 export const metadata = {
   title: 'Trailer Burger Hall',
-  icons:{
-    icon:[ 
+  icons: {
+    icon: [
       { url: '/favicon.ico', sizes: 'any' },
       { url: '/favicon-32.png', type: 'image/png', sizes: '32x32' },
       { url: '/favicon-48.png', type: 'image/png', sizes: '48x48' },
@@ -28,7 +28,7 @@ export const metadata = {
     shortcut: '/favicon.ico',
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
-  manifest: '/manifest.webmanifest?v=2',
+  manifest: '/manifest.json',
   description: 'Hamburguesas de sabores · Menú, horarios y contacto',
 }
 

@@ -9,14 +9,15 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Coincidir con todas las rutas excepto:
-     * - _next/static (archivos estáticos)
-     * - _next/image (imágenes optimizadas)
-     * - favicon.ico (icono)
-     * - login (obviamente queremos que el login sea público)
-     * - auth (rutas de callback si las usaras)
-     * - images, icons (assets públicos)
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - login (login page)
+     * - manifest.json (PWA manifest)
+     * - icons (PWA icons)
      */
-    '/((?!_next/static|_next/image|favicon.ico|login|auth|update-password|images|icons).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|login|manifest.json|icons).*)',
   ],
 }

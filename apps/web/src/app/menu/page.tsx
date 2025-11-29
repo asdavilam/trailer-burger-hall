@@ -244,8 +244,13 @@ function ProductCard({ product, showVariants, descriptionOverride }: ProductCard
     >
       {/* IMAGE */}
       <div className="w-full sm:w-28 h-28 rounded-xl overflow-hidden bg-gray-100 relative mx-auto sm:mx-0">
-        {product.image_url ? (
-          <Image src={product.image_url} alt={product.name} fill className="object-cover" />
+        {(variantsToShow.find(v => v.image_url)?.image_url || product.image_url) ? (
+          <Image
+            src={variantsToShow.find(v => v.image_url)?.image_url || product.image_url!}
+            alt={product.name}
+            fill
+            className="object-cover"
+          />
         ) : (
           <div className="flex items-center justify-center h-full text-3xl opacity-20">
             {showVariants.includes('light') ? '🥗' : '🍔'}
@@ -266,7 +271,7 @@ function ProductCard({ product, showVariants, descriptionOverride }: ProductCard
         </div>
 
         <p className="text-gray-700 text-sm sm:text-base leading-snug mb-3 line-clamp-3">
-          {descriptionOverride || product.description}
+          {variantsToShow.find(v => v.description)?.description || product.description || descriptionOverride}
         </p>
 
         <div className="flex flex-wrap gap-2">
