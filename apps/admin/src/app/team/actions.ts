@@ -5,21 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
 import { UserRole } from '@trailer/shared'
 
-// Verificar si soy admin (Helper)
-async function requireAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('No autenticado')
-  
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-    
-  if (profile?.role !== 'admin') throw new Error('No autorizado')
-  return user
-}
+import { requireAdmin } from '@/lib/auth'
 
 // 1. CAMBIAR ROL
 export async function updateUserRole(userId: string, newRole: UserRole) {
@@ -68,33 +54,61 @@ export async function toggleUserStatus(userId: string, isActive: boolean) {
 }
 
 // 3. CREAR USUARIO (Invitar)
-export async function createUser(formData: FormData) {
+// 3. INVITAR USUARIO (Por Email)
+export async function inviteUser(formData: FormData) {
   try {
     await requireAdmin()
 
     const email = formData.get('email') as string
-    const password = formData.get('password') as string
     const role = formData.get('role') as UserRole
     const name = formData.get('name') as string
 
-    // Crear en Auth (Usando Service Role)
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Confirmado automático
-      user_metadata: { display_name: name }
+    // Enviar invitación por email (Supabase Auth)
+    // Redirigir a /auth/callback?next=/update-password para que establezcan su contraseña
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password`
+
+    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      data: { display_name: name }, // Metadata inicial
+      redirectTo: redirectUrl
     })
 
     if (error) throw error
-    if (!data.user) throw new Error('No se pudo crear el usuario')
+    if (!data.user) throw new Error('No se pudo invitar al usuario')
 
     // Actualizar rol y nombre en user_profiles
-    // (El trigger lo creó como 'staff' por defecto, aquí lo ajustamos)
-    await supabaseAdmin
+    // (El trigger lo crea al insertar en auth.users, aquí lo actualizamos con el rol correcto)
+    const { error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .update({ role, display_name: name, is_active: true })
+      .update({
+        role,
+        display_name: name,
+        is_active: true
+      })
       .eq('id', data.user.id)
 
+    if (profileError) {
+      // Si falla la actualización del perfil, al menos el usuario fue invitado.
+      console.error('Error updating profile for invited user:', profileError)
+    }
+
+    revalidatePath('/team')
+    return { success: true }
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+// 4. ELIMINAR USUARIO
+export async function deleteUser(userId: string) {
+  try {
+    const me = await requireAdmin()
+    if (me.id === userId) return { error: 'No puedes eliminarte a ti mismo' }
+
+    // Eliminar de Auth (esto debería disparar cascade en user_profiles si está configurado,
+    // pero si no, Supabase Auth es la fuente de verdad)
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+    if (error) throw error
     revalidatePath('/team')
     return { success: true }
   } catch (e: any) {

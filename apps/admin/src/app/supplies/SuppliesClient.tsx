@@ -1,32 +1,53 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Supply } from '@trailer/shared'
-import { StockBadge } from './StockBadge'
+import { EditableStock } from './EditableStock'
 import { SupplyModal } from './SupplyModal'
-import { deleteSupply } from './actions' // 👈 Importamos la acción de borrar
+import { deleteSupply, confirmPriceValid } from './actions'
+import { ResponsiveTable } from '@/components/ui/ResponsiveTable'
+import { Button } from '@/components/ui/Button'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Badge } from '@/components/ui/Badge'
 
 type Props = {
     supplies: Supply[]
 }
 
+// Función para verificar si el precio está desactualizado (más de 30 días)
+function isPriceOutdated(lastCheck?: string): boolean {
+    if (!lastCheck) return true
+    const daysSinceCheck = Math.floor((Date.now() - new Date(lastCheck).getTime()) / (1000 * 60 * 60 * 24))
+    return daysSinceCheck > 30
+}
+
 export function SuppliesClient({ supplies }: Props) {
-    // Ahora el estado guarda el objeto a editar (o undefined si es nuevo)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<Supply | undefined>(undefined)
+    const [searchTerm, setSearchTerm] = useState('')
 
-    // Abrir modal para CREAR
+    // Filtrar supplies basado en el término de búsqueda
+    const filteredSupplies = useMemo(() => {
+        if (!searchTerm.trim()) return supplies
+
+        const term = searchTerm.toLowerCase()
+        return supplies.filter(supply =>
+            supply.name.toLowerCase().includes(term) ||
+            supply.provider?.toLowerCase().includes(term) ||
+            supply.brand?.toLowerCase().includes(term) ||
+            supply.category?.toLowerCase().includes(term)
+        )
+    }, [supplies, searchTerm])
+
     const handleCreate = () => {
         setEditingItem(undefined)
         setIsModalOpen(true)
     }
 
-    // Abrir modal para EDITAR
     const handleEdit = (item: Supply) => {
         setEditingItem(item)
         setIsModalOpen(true)
     }
 
-    // Manejar ELIMINACIÓN
     const handleDelete = async (id: string) => {
         const confirmed = window.confirm('¿Estás seguro de borrar este insumo?\nSi está en uso en alguna receta, no se podrá eliminar.')
         if (!confirmed) return
@@ -37,84 +58,166 @@ export function SuppliesClient({ supplies }: Props) {
         }
     }
 
-    return (
-        <div className="max-w-6xl mx-auto p-6">
-            <div className="flex justify-between items-center mb-6">
+    const handleConfirmPrice = async (id: string, name: string) => {
+        const confirmed = window.confirm(`¿Confirmar que el precio de "${name}" sigue vigente?`)
+        if (!confirmed) return
+
+        const res = await confirmPriceValid(id)
+        if (res?.error) {
+            alert('❌ Error: ' + res.error)
+        }
+    }
+
+    const columns = [
+        {
+            header: 'Insumo',
+            cell: (item: Supply) => (
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Inventario de Insumos 📦</h1>
-                    <p className="text-gray-500">Gestiona tus materias primas y costos.</p>
+                    <div className="text-sm font-bold text-[var(--color-secondary)]">{item.name}</div>
+                    <div className="text-xs text-gray-400">
+                        {item.brand && <span className="font-mono">{item.brand}</span>}
+                        {item.category && <span className="ml-2 text-gray-500">• {item.category}</span>}
+                    </div>
                 </div>
-                <button
-                    onClick={handleCreate}
-                    className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition flex items-center gap-2"
-                >
-                    <span>+</span> Nuevo Insumo
-                </button>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
-                            {/* 👇 Nueva columna */}
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {supplies.map((item) => (
-                            <tr key={item.id} className="hover:bg-gray-50 transition group">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-bold text-gray-900">{item.name}</div>
-                                    <div className="text-xs text-gray-400 font-mono">ID: {item.id.slice(0, 8)}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    ${item.cost_per_unit.toFixed(2)} <span className="text-gray-400 text-xs">/ {item.unit}</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <StockBadge supply={item} />
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {item.provider || '-'}
-                                </td>
-                                {/* 👇 Botones de Acción */}
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                        <button 
-                                            onClick={() => handleEdit(item)}
-                                            className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md transition"
-                                        >
-                                            ✏️ Editar
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDelete(item.id)}
-                                            className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-md transition"
-                                        >
-                                            🗑️ Borrar
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-
-                        {supplies.length === 0 && (
-                            <tr>
-                                <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
-                                    No hay insumos registrados aún.
-                                </td>
-                            </tr>
+            )
+        },
+        {
+            header: 'Costo',
+            cell: (item: Supply) => (
+                <div className="flex items-center gap-2">
+                    <div>
+                        <div className="text-sm text-gray-700 font-bold">
+                            ${item.cost_per_unit.toFixed(2)} <span className="text-gray-400 text-xs font-normal">/ {item.unit}</span>
+                        </div>
+                        {item.package_cost && item.quantity_per_package && (
+                            <div className="text-xs text-gray-400">
+                                {item.purchase_unit && <span>{item.purchase_unit}: </span>}
+                                ${item.package_cost} / {item.quantity_per_package} {item.unit}
+                            </div>
                         )}
-                    </tbody>
-                </table>
+                    </div>
+                    {isPriceOutdated(item.last_price_check) && (
+                        <button
+                            onClick={() => handleConfirmPrice(item.id, item.name)}
+                            className="text-yellow-600 hover:text-yellow-700 transition-colors"
+                            title="Precio sin verificar en 30+ días. Click para confirmar."
+                        >
+                            ⚠️
+                        </button>
+                    )}
+                </div>
+            )
+        },
+        {
+            header: 'Stock',
+            cell: (item: Supply) => <EditableStock supply={item} />
+        },
+        {
+            header: 'Proveedor',
+            accessorKey: 'provider' as keyof Supply,
+            cell: (item: Supply) => <span className="text-sm text-gray-500">{item.provider || '-'}</span>
+        },
+        {
+            header: 'Acciones',
+            className: 'text-right',
+            cell: (item: Supply) => (
+                <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
+                        ✏️ Editar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="text-red-600 hover:bg-red-50 hover:text-red-700">
+                        🗑️ Borrar
+                    </Button>
+                </div>
+            )
+        }
+    ]
+
+    const renderMobileItem = (item: Supply) => (
+        <div className="space-y-3">
+            <div className="flex justify-between items-start">
+                <div>
+                    <h3 className="font-bold text-[var(--color-secondary)]">{item.name}</h3>
+                    <p className="text-xs text-gray-400">
+                        {item.brand && <span>{item.brand}</span>}
+                        {item.category && <span className="ml-2">• {item.category}</span>}
+                    </p>
+                </div>
+                <EditableStock supply={item} />
             </div>
+
+            <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                    <span className="text-gray-500 block text-xs">Costo</span>
+                    <div className="flex items-center gap-1">
+                        <span className="font-medium">${item.cost_per_unit.toFixed(2)} / {item.unit}</span>
+                        {isPriceOutdated(item.last_price_check) && (
+                            <button
+                                onClick={() => handleConfirmPrice(item.id, item.name)}
+                                className="text-yellow-600"
+                                title="Precio desactualizado"
+                            >
+                                ⚠️
+                            </button>
+                        )}
+                    </div>
+                </div>
+                <div>
+                    <span className="text-gray-500 block text-xs">Proveedor</span>
+                    <span className="font-medium">{item.provider || '-'}</span>
+                </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-gray-100 mt-2">
+                <Button variant="outline" size="sm" onClick={() => handleEdit(item)} className="flex-1">
+                    ✏️ Editar
+                </Button>
+                <Button variant="danger" size="sm" onClick={() => handleDelete(item.id)} className="flex-1">
+                    🗑️ Borrar
+                </Button>
+            </div>
+        </div>
+    )
+
+    return (
+        <div className="max-w-6xl mx-auto p-4 sm:p-6">
+            <PageHeader
+                title="Inventario de Insumos 📦"
+                description="Gestiona tus materias primas y costos."
+            >
+                <Button onClick={handleCreate}>
+                    <span>+</span> Nuevo Insumo
+                </Button>
+            </PageHeader>
+
+            {/* Barra de Búsqueda */}
+            <div className="mb-4">
+                <input
+                    type="text"
+                    placeholder="🔍 Buscar por nombre, proveedor, marca o categoría..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                />
+                {searchTerm && (
+                    <p className="text-sm text-gray-500 mt-2">
+                        Mostrando {filteredSupplies.length} de {supplies.length} insumos
+                    </p>
+                )}
+            </div>
+
+            <ResponsiveTable
+                data={filteredSupplies}
+                columns={columns}
+                renderMobileItem={renderMobileItem}
+                keyExtractor={(item) => item.id}
+                emptyMessage={searchTerm ? "No se encontraron insumos con ese criterio." : "No hay insumos registrados aún."}
+            />
 
             {isModalOpen && (
-                <SupplyModal 
-                    supply={editingItem} // Pasamos el item a editar (o undefined)
-                    onClose={() => setIsModalOpen(false)} 
+                <SupplyModal
+                    supply={editingItem}
+                    onClose={() => setIsModalOpen(false)}
                 />
             )}
         </div>

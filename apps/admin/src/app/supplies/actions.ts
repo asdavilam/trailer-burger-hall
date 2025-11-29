@@ -26,16 +26,29 @@ export async function getSupplies() {
 export async function createSupply(formData: FormData) {
   const name = formData.get('name') as string
   const unit = formData.get('unit') as SupplyUnit
-  const cost = parseFloat(formData.get('cost') as string) || 0
+  const packageCost = parseFloat(formData.get('package_cost') as string) || 0
+  const quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
+  const purchaseUnit = formData.get('purchase_unit') as string
   const minStock = parseFloat(formData.get('min_stock') as string) || 0
   const provider = formData.get('provider') as string
+  const brand = formData.get('brand') as string
+  const category = formData.get('category') as string
+
+  // Calcular costo unitario automáticamente
+  const costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
 
   const { error } = await supabaseAdmin.from('supplies').insert({
     name,
     unit,
-    cost_per_unit: cost,
+    cost_per_unit: costPerUnit,
+    package_cost: packageCost,
+    quantity_per_package: quantityPerPackage,
+    purchase_unit: purchaseUnit || null,
+    last_price_check: new Date().toISOString(),
     min_stock: minStock,
-    provider,
+    provider: provider || null,
+    brand: brand || null,
+    category: category || null,
     current_stock: 0 // Empieza en 0
   })
 
@@ -48,18 +61,31 @@ export async function createSupply(formData: FormData) {
 export async function updateSupply(id: string, formData: FormData) {
   const name = formData.get('name') as string
   const unit = formData.get('unit') as SupplyUnit
-  const cost = parseFloat(formData.get('cost') as string) || 0
+  const packageCost = parseFloat(formData.get('package_cost') as string) || 0
+  const quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
+  const purchaseUnit = formData.get('purchase_unit') as string
   const minStock = parseFloat(formData.get('min_stock') as string) || 0
   const provider = formData.get('provider') as string
+  const brand = formData.get('brand') as string
+  const category = formData.get('category') as string
+
+  // Calcular costo unitario automáticamente
+  const costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
 
   const { error } = await supabaseAdmin
     .from('supplies')
     .update({
       name,
       unit,
-      cost_per_unit: cost,
+      cost_per_unit: costPerUnit,
+      package_cost: packageCost,
+      quantity_per_package: quantityPerPackage,
+      purchase_unit: purchaseUnit || null,
+      last_price_check: new Date().toISOString(), // Actualizar fecha de verificación
       min_stock: minStock,
-      provider
+      provider: provider || null,
+      brand: brand || null,
+      category: category || null
     })
     .eq('id', id)
 
@@ -121,5 +147,69 @@ export async function addStock(supplyId: string, quantity: number) {
 
   revalidatePath('/supplies')
   revalidatePath('/supplies/shopping-list') // Importante refrescar la lista
+  return { success: true }
+}
+
+// 5. AJUSTE RÁPIDO DE STOCK (con registro en inventory_logs)
+export async function adjustStock(supplyId: string, newStock: number, reason: string) {
+  const supabase = await createClient()
+
+  // 1. Obtener el stock actual y el usuario
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuario no autenticado' }
+
+  const { data: supply } = await supabaseAdmin
+    .from('supplies')
+    .select('current_stock, name')
+    .eq('id', supplyId)
+    .single()
+
+  if (!supply) return { error: 'Insumo no encontrado' }
+
+  const oldStock = supply.current_stock || 0
+  const changeAmount = newStock - oldStock
+
+  // 2. Actualizar el stock
+  const { error: updateError } = await supabaseAdmin
+    .from('supplies')
+    .update({ current_stock: newStock })
+    .eq('id', supplyId)
+
+  if (updateError) return { error: updateError.message }
+
+  // 3. Registrar en inventory_logs
+  const { error: logError } = await supabaseAdmin
+    .from('inventory_logs')
+    .insert({
+      supply_id: supplyId,
+      user_id: user.id,
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+      initial_stock: oldStock,
+      entries: changeAmount > 0 ? changeAmount : 0,
+      exits: changeAmount < 0 ? Math.abs(changeAmount) : 0,
+      final_count: newStock,
+      comments: reason ? `Ajuste rápido: ${reason}` : `Ajuste rápido: ${oldStock} → ${newStock}`
+    })
+
+  if (logError) {
+    console.error('Error logging inventory change:', logError)
+    return { error: `Stock actualizado pero no se pudo registrar en historial: ${logError.message}` }
+  }
+
+  revalidatePath('/supplies')
+  revalidatePath('/supplies/history')
+  return { success: true }
+}
+
+// 6. CONFIRMAR PRECIO VIGENTE (actualizar solo last_price_check)
+export async function confirmPriceValid(supplyId: string) {
+  const { error } = await supabaseAdmin
+    .from('supplies')
+    .update({ last_price_check: new Date().toISOString() })
+    .eq('id', supplyId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/supplies')
   return { success: true }
 }

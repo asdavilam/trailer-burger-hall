@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { createUser } from './actions'
+import { inviteUser } from './actions'
 
 export function CreateUserForm() {
   const [isOpen, setIsOpen] = useState(false)
@@ -8,11 +8,11 @@ export function CreateUserForm() {
 
   if (!isOpen) {
     return (
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
       >
-        + Nuevo Usuario
+        + Invitar Usuario
       </button>
     )
   }
@@ -20,21 +20,20 @@ export function CreateUserForm() {
   return (
     <div className="bg-gray-50 p-4 rounded-lg border mb-6 animate-in fade-in slide-in-from-top-2">
       <form action={async (formData) => {
-        setMsg('Creando...')
-        const res = await createUser(formData)
+        setMsg('Enviando invitación...')
+        const res = await inviteUser(formData)
         if (res.error) setMsg(res.error)
         else {
-          setMsg('¡Usuario creado!')
-          setIsOpen(false)
+          setMsg('¡Invitación enviada!')
+          setTimeout(() => {
+            setIsOpen(false)
+            setMsg('')
+          }, 2000)
         }
       }} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase">Email</label>
           <input name="email" type="email" required placeholder="staff@trailer.com" className="w-full p-2 border rounded" />
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase">Contraseña</label>
-          <input name="password" type="text" required placeholder="123456" className="w-full p-2 border rounded" />
         </div>
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase">Nombre</label>
@@ -49,7 +48,7 @@ export function CreateUserForm() {
           </select>
         </div>
         <div className="flex gap-2">
-          <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded font-bold">Guardar</button>
+          <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded font-bold">Invitar</button>
           <button type="button" onClick={() => setIsOpen(false)} className="bg-gray-300 px-4 py-2 rounded">Cancelar</button>
         </div>
       </form>
