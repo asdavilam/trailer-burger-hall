@@ -4,9 +4,9 @@ import type { NextConfig } from 'next'
 
 const withPWA = withPWAInit({
   dest: 'public',
-  register: true,
+  register: false,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
+  // disable: process.env.NODE_ENV === 'development',
   fallbacks: {
     document: '/offline.html',
     image: '/icons/icon-192.png',
@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/manifest.webmanifest',
+        source: '/manifest.json',
         headers: [
           { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
           { key: 'Pragma', value: 'no-cache' },

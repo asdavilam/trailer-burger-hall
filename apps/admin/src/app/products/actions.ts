@@ -10,11 +10,11 @@ import { redirect } from 'next/navigation'
 // --- LECTURA (Para cargar la página) ---
 
 export async function getProductFull(id: string) {
-    const supabase = await createClient()
+  const supabase = await createClient()
 
-    const { data, error } = await supabase
-        .from('v2_products')
-        .select(`
+  const { data, error } = await supabase
+    .from('v2_products')
+    .select(`
       *,
       variants:v2_product_variants(*),
       allowed_modifiers:v2_product_modifiers_link(
@@ -22,27 +22,27 @@ export async function getProductFull(id: string) {
         modifier:v2_modifiers(*)
       )
     `)
-        .eq('id', id)
-        .single()
+    .eq('id', id)
+    .single()
 
-    if (error || !data) return null
-    return data as V2Product
+  if (error || !data) return null
+  return data as V2Product
 }
 
 export async function getAllModifiers() {
-    const supabase = await createClient()
-    // Traemos todos los modificadores (sabores y extras) activos
-    const { data } = await supabase.from('v2_modifiers').select('*').eq('is_active', true).order('name')
-    return data || []
+  const supabase = await createClient()
+  // Traemos todos los modificadores (sabores y extras) activos
+  const { data } = await supabase.from('v2_modifiers').select('*').eq('is_active', true).order('name')
+  return data || []
 }
 
 // Get all products with their variants and modifiers
 export async function getV2Products() {
-    const supabase = await createClient()
+  const supabase = await createClient()
 
-    const { data, error } = await supabase
-        .from('v2_products')
-        .select(`
+  const { data, error } = await supabase
+    .from('v2_products')
+    .select(`
       *,
       variants:v2_product_variants(*),
       allowed_modifiers:v2_product_modifiers_link(
@@ -50,77 +50,162 @@ export async function getV2Products() {
         modifier:v2_modifiers(*)
       )
     `)
-        .eq('is_active', true)
-        .order('name')
+    .eq('is_active', true)
+    .order('name')
 
-    if (error) {
-        console.error('Error fetching products:', error)
-        return []
-    }
+  if (error) {
+    console.error('Error fetching products:', error)
+    return []
+  }
 
-    return data as V2Product[]
+  return data as V2Product[]
 }
 
 // --- ESCRITURA (Actions para los formularios) ---
 
 // 1. Actualizar Datos Básicos
 export async function updateProductBasic(id: string, formData: FormData) {
-    const name = formData.get('name') as string
-    const category = formData.get('category') as string
+  const name = formData.get('name') as string
+  const category = formData.get('category') as string
+  const description = formData.get('description') as string
+  const imageFile = formData.get('image') as File
 
-    const { error } = await supabaseAdmin
-        .from('v2_products')
-        .update({ name, category })
-        .eq('id', id)
+  const updates: any = { name, category, description }
 
-    if (error) return { error: error.message }
-    revalidatePath(`/products/${id}`)
-    return { success: true }
+  if (imageFile && imageFile.size > 0) {
+    // Usamos supabaseAdmin para ignorar RLS en el Storage
+    const fileExt = imageFile.name.split('.').pop()
+    const fileName = `${id}-${Date.now()}.${fileExt}`
+
+    // Map categories to folders
+    let folder = 'otros'
+    if (category === 'protein_base') folder = 'hamburguesas'
+    else if (category === 'side') folder = 'papas'
+    else if (category === 'drink') folder = 'bebidas'
+    else if (category === 'special') folder = 'especiales'
+
+    const filePath = `${folder}/${fileName}`
+
+    const { error: uploadError } = await supabaseAdmin
+      .storage
+      .from('menu')
+      .upload(filePath, imageFile, {
+        contentType: imageFile.type,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError)
+      return { error: `Error subiendo imagen: ${uploadError.message}` }
+    }
+
+    const { data: { publicUrl } } = supabaseAdmin
+      .storage
+      .from('menu')
+      .getPublicUrl(filePath)
+
+    updates.image_url = publicUrl
+  }
+
+  const { error } = await supabaseAdmin
+    .from('v2_products')
+    .update(updates)
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/products/${id}`)
+  return { success: true }
 }
 
 // 2. Actualizar Precio de una Variante
 export async function updateVariantPrice(variantId: string, price: number) {
-    const { error } = await supabaseAdmin
-        .from('v2_product_variants')
-        .update({ price })
-        .eq('id', variantId)
+  const { error } = await supabaseAdmin
+    .from('v2_product_variants')
+    .update({ price })
+    .eq('id', variantId)
 
-    if (error) return { error: 'Error actualizando precio' }
-    revalidatePath('/products/[id]', 'page')
-    return { success: true }
+  if (error) return { error: 'Error actualizando precio' }
+  revalidatePath('/products/[id]', 'page')
+  return { success: true }
+}
+
+export async function updateVariantDetails(variantId: string, formData: FormData) {
+  const description = formData.get('description') as string
+  const imageFile = formData.get('image') as File
+
+  // Necesitamos saber el producto padre para la carpeta, pero por simplicidad
+  // usaremos una carpeta 'variantes' o intentaremos deducir.
+  // Mejor aún, guardamos en 'variantes' dentro de menu.
+
+  const updates: any = { description }
+
+  if (imageFile && imageFile.size > 0) {
+    const fileExt = imageFile.name.split('.').pop()
+    const fileName = `${variantId}-${Date.now()}.${fileExt}`
+    const filePath = `variantes/${fileName}`
+
+    const { error: uploadError } = await supabaseAdmin
+      .storage
+      .from('menu')
+      .upload(filePath, imageFile, {
+        contentType: imageFile.type,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error('Error uploading variant image:', uploadError)
+      return { error: `Error subiendo imagen: ${uploadError.message}` }
+    }
+
+    const { data: { publicUrl } } = supabaseAdmin
+      .storage
+      .from('menu')
+      .getPublicUrl(filePath)
+
+    updates.image_url = publicUrl
+  }
+
+  const { error } = await supabaseAdmin
+    .from('v2_product_variants')
+    .update(updates)
+    .eq('id', variantId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/products/[id]', 'page')
+  return { success: true }
 }
 
 // 3. Alternar Modificador (Activar/Desactivar un sabor para este producto)
 export async function toggleModifierLink(productId: string, modifierId: string, isLinked: boolean) {
-    if (isLinked) {
-        // Crear enlace
-        const { error } = await supabaseAdmin
-            .from('v2_product_modifiers_link')
-            .insert({ product_id: productId, modifier_id: modifierId })
-        if (error) return { error: error.message }
-    } else {
-        // Borrar enlace
-        const { error } = await supabaseAdmin
-            .from('v2_product_modifiers_link')
-            .delete()
-            .match({ product_id: productId, modifier_id: modifierId })
-        if (error) return { error: error.message }
-    }
+  if (isLinked) {
+    // Crear enlace
+    const { error } = await supabaseAdmin
+      .from('v2_product_modifiers_link')
+      .insert({ product_id: productId, modifier_id: modifierId })
+    if (error) return { error: error.message }
+  } else {
+    // Borrar enlace
+    const { error } = await supabaseAdmin
+      .from('v2_product_modifiers_link')
+      .delete()
+      .match({ product_id: productId, modifier_id: modifierId })
+    if (error) return { error: error.message }
+  }
 
-    revalidatePath(`/products/${productId}`)
-    return { success: true }
+  revalidatePath(`/products/${productId}`)
+  return { success: true }
 }
 
 // 4. Configurar Default (Hacer que "Chimi" venga pre-seleccionado)
 export async function toggleModifierDefault(productId: string, modifierId: string, isDefault: boolean) {
-    const { error } = await supabaseAdmin
-        .from('v2_product_modifiers_link')
-        .update({ is_default: isDefault })
-        .match({ product_id: productId, modifier_id: modifierId })
+  const { error } = await supabaseAdmin
+    .from('v2_product_modifiers_link')
+    .update({ is_default: isDefault })
+    .match({ product_id: productId, modifier_id: modifierId })
 
-    if (error) return { error: error.message }
-    revalidatePath(`/products/${productId}`)
-    return { success: true }
+  if (error) return { error: error.message }
+  revalidatePath(`/products/${productId}`)
+  return { success: true }
 }
 
 // --- GESTIÓN DE RECETAS V2 (INVENTARIO) ---
@@ -132,7 +217,7 @@ export async function getVariantIngredients(variantId: string) {
     .from('v2_product_ingredients')
     .select('*, supply:supplies(*)') // Traemos nombre del insumo
     .eq('variant_id', variantId)
-  
+
   return data || []
 }
 
@@ -171,8 +256,8 @@ export async function createProduct(formData: FormData) {
   // 1. Crear el producto base
   const { data, error } = await supabaseAdmin
     .from('v2_products')
-    .insert({ 
-      name, 
+    .insert({
+      name,
       category,
       is_active: true,
       config: {} // Configuración vacía por defecto
@@ -229,14 +314,14 @@ export async function getFullRecipesReport() {
     console.error(error)
     return []
   }
-  
+
   return data
 }
 // 7. BORRAR PRODUCTO
 export async function deleteProduct(id: string) {
   // Primero borramos sus relaciones si no tienes ON DELETE CASCADE configurado en BD,
   // pero asumiendo que sí (es lo estándar en Supabase), basta con borrar el padre.
-  
+
   const { error } = await supabaseAdmin
     .from('v2_products')
     .delete()

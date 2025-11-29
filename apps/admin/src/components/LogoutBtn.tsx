@@ -7,7 +7,7 @@ export function LogoutBtn() {
       onClick={() => logout()} 
       className="text-sm font-medium text-red-600 hover:text-red-800 hover:underline transition"
     >
-      Cerrar Sesión 🚪
+      Cerrar Sesión
     </button>
   )
 }

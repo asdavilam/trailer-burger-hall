@@ -19,8 +19,8 @@ export default async function ProductsV2Page() {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6">
       <PageHeader
-        title="Catálogo Unificado (V2) 🚀"
-        description="Vista previa de la nueva estructura migrada."
+        title="Menú"
+        description="Vista previa de los productos registrados."
       >
         <Button asChild>
           <Link href="/products/new">
