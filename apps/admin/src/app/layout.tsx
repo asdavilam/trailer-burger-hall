@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Admin - Trailer Burger Hall",
+  title: "Portal - Trailer Burger Hall",
   description: "Sistema de Gestión",
 };
 

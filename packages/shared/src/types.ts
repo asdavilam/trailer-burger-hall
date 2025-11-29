@@ -60,9 +60,16 @@ export type Supply = {
   name: string;
   unit: SupplyUnit;
   cost_per_unit: number;
+  package_cost?: number;
+  quantity_per_package?: number;
+  purchase_unit?: string;
+  last_price_check?: string;
+  price_trend?: 'up' | 'down' | 'stable';
   current_stock: number;
   min_stock?: number | null;
   provider?: string | null;
+  brand?: string | null;
+  category?: string | null;
   created_at?: string;
 };
 
@@ -71,7 +78,7 @@ export type InventoryAssignment = {
   user_id: string;
   supply_id: string;
   // Opcional: incluir datos expandidos si haces joins
-  supply?: Supply; 
+  supply?: Supply;
   user?: UserProfile;
 };
 
@@ -93,10 +100,10 @@ export type ProductIngredient = {
   protein_id?: string | null;
   flavor_id?: string | null;
   extra_id?: string | null;
-  
+
   // Se conecta con:
   supply_id: string;
   supply?: Supply; // Para poder mostrar el nombre "Carne" en el front
-  
+
   quantity: number;
 };

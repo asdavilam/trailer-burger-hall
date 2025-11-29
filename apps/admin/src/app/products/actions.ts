@@ -232,3 +232,17 @@ export async function getFullRecipesReport() {
   
   return data
 }
+// 7. BORRAR PRODUCTO
+export async function deleteProduct(id: string) {
+  // Primero borramos sus relaciones si no tienes ON DELETE CASCADE configurado en BD,
+  // pero asumiendo que sí (es lo estándar en Supabase), basta con borrar el padre.
+  
+  const { error } = await supabaseAdmin
+    .from('v2_products')
+    .delete()
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/products')
+  return { success: true }
+}

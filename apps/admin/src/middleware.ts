@@ -17,6 +17,6 @@ export const config = {
      * - auth (rutas de callback si las usaras)
      * - images, icons (assets públicos)
      */
-    '/((?!_next/static|_next/image|favicon.ico|login|auth|images|icons).*)',
+    '/((?!_next/static|_next/image|favicon.ico|login|auth|update-password|images|icons).*)',
   ],
 }

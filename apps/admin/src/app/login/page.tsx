@@ -1,19 +1,21 @@
 import { login } from './actions' // Importamos la Server Action
 
-export default function AdminLoginPage({
+export default async function AdminLoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string }
+  searchParams: Promise<{ error?: string }>
 }) {
+  const { error } = await searchParams
+
   return (
     <section className="max-w-md mx-auto p-8 border rounded-lg shadow-md bg-white mt-10">
       <h1 className="font-bold text-2xl mb-6 text-center text-gray-800">Iniciar sesión</h1>
 
       <form action={login} className="space-y-4">
         {/* Mostramos errores que vienen de la URL (enviados por la action) */}
-        {searchParams.error && (
+        {error && (
           <div className="p-3 text-sm text-red-600 bg-red-100 rounded border border-red-200">
-            {searchParams.error}
+            {error}
           </div>
         )}
 
@@ -41,8 +43,8 @@ export default function AdminLoginPage({
           />
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="w-full bg-orange-600 text-white font-bold py-2 px-4 rounded-xl hover:bg-orange-700 transition-colors"
         >
           Entrar

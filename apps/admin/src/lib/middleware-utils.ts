@@ -37,7 +37,8 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // REGLA 1: Protección básica (Si no hay user, al login)
-  if (!user && !path.startsWith('/login')) {
+  // Permitimos acceso a /auth/callback y /update-password aunque no haya user (el callback crea la sesión)
+  if (!user && !path.startsWith('/login') && !path.startsWith('/auth') && !path.startsWith('/update-password')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -52,7 +53,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // --- 🔒 SEGURIDAD AVANZADA ---
-  
+
   if (user) {
     // Consultar Perfil (Rol y Estado)
     const { data: profile } = await supabase
@@ -66,7 +67,7 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('error', 'Tu cuenta ha sido desactivada.')
-      
+
       const response = NextResponse.redirect(url)
       // Limpiar cookies manualmente para asegurar cierre
       response.cookies.getAll().forEach(cookie => {
@@ -77,11 +78,11 @@ export async function updateSession(request: NextRequest) {
 
     // REGLA 4: Restricción Estricta (Staff = Solo Inventario) [MODIFICADO]
     const isAdmin = profile?.role === 'admin'
-    
+
     if (!isAdmin) {
       // Si NO es admin... 
-      // y la ruta NO empieza con /supplies/count
-      if (!path.startsWith('/supplies/count')) {
+      // y la ruta NO empieza con /supplies/count NI es /update-password
+      if (!path.startsWith('/supplies/count') && !path.startsWith('/update-password')) {
         const url = request.nextUrl.clone()
         url.pathname = '/supplies/count' // 👈 Redirección forzada a la única pantalla permitida
         return NextResponse.redirect(url)
