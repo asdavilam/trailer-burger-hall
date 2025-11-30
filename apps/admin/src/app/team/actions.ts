@@ -65,7 +65,14 @@ export async function inviteUser(formData: FormData) {
 
     // Enviar invitación por email (Supabase Auth)
     // Redirigir a /auth/callback?next=/update-password para que establezcan su contraseña
-    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password`
+    const getBaseUrl = () => {
+      if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
+      if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+      if (process.env.NODE_ENV === 'production') return 'https://portal.trailerburgerhall.com.mx'
+      return 'http://localhost:3000'
+    }
+
+    const redirectUrl = `${getBaseUrl()}/auth/callback?next=/update-password`
 
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: { display_name: name }, // Metadata inicial
