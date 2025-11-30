@@ -72,7 +72,7 @@ export async function inviteUser(formData: FormData) {
       return 'http://localhost:3000'
     }
 
-    const redirectUrl = `${getBaseUrl()}/auth/callback?next=/update-password`
+    const redirectUrl = `${getBaseUrl()}/auth/callback`
 
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: { display_name: name }, // Metadata inicial
