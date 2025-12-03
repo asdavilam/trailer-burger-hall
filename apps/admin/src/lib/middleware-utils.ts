@@ -38,7 +38,7 @@ export async function updateSession(request: NextRequest) {
 
   // REGLA 1: Protección básica (Si no hay user, al login)
   // Permitimos acceso a /auth/callback y /update-password aunque no haya user (el callback crea la sesión)
-  if (!user && !path.startsWith('/login') && !path.startsWith('/auth') && !path.startsWith('/update-password')) {
+  if (!user && !path.startsWith('/login') && !path.startsWith('/auth') && !path.startsWith('/update-password') && !path.startsWith('/forgot-password')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

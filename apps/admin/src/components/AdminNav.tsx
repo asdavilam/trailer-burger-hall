@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { LogoutBtn } from './LogoutBtn'
+import { InstallPWA } from './InstallPWA'
 
 // Definición de las sub-rutas de inventario para reutilizar
 const inventorySubItems = [
@@ -142,8 +143,8 @@ export function AdminNav() {
         }
     }, [supabase, pathname]) // Agregamos pathname para re-verificar al navegar
 
-    // Ocultar en login, update-password y auth callback
-    if (pathname === '/login' || pathname === '/update-password' || pathname.startsWith('/auth')) return null
+    // Ocultar en login, update-password, forgot-password y auth callback
+    if (pathname === '/login' || pathname === '/update-password' || pathname === '/forgot-password' || pathname.startsWith('/auth')) return null
 
     // Si está cargando, mostramos un navbar vacío o skeleton para evitar saltos, 
     // o simplemente el navbar completo y luego se ajusta (preferible skeleton o nada)
@@ -184,7 +185,8 @@ export function AdminNav() {
                     </div>
                     {/* ... rest of the component */}
 
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-2">
+                        <InstallPWA />
                         <LogoutBtn />
                     </div>
                 </div>
