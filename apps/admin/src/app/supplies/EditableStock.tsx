@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Supply } from '@trailer/shared'
 import { StockBadge } from './StockBadge'
 import { adjustStock } from './actions'
@@ -14,8 +14,11 @@ export function EditableStock({ supply }: Props) {
     const [newStock, setNewStock] = useState(supply.current_stock.toString())
     const [isSaving, setIsSaving] = useState(false)
     const [showSuccess, setShowSuccess] = useState(false)
+    const isSubmittingRef = useRef(false)
 
     const handleSave = async () => {
+        if (isSubmittingRef.current) return
+
         const numericStock = parseFloat(newStock) || 0
 
         if (numericStock === supply.current_stock) {
@@ -23,10 +26,25 @@ export function EditableStock({ supply }: Props) {
             return
         }
 
-        const reason = prompt('Razón del ajuste (opcional):') || 'Ajuste manual'
+        isSubmittingRef.current = true
+
+        // Pequeño timeout para permitir que el UI se actualice si fue disparado por evento
+        await new Promise(resolve => setTimeout(resolve, 0))
+
+        const reason = prompt('Razón del ajuste (opcional):')
+
+        // Si el usuario cancela el prompt (null), cancelamos la edición
+        if (reason === null) {
+            setNewStock(supply.current_stock.toString())
+            setIsEditing(false)
+            isSubmittingRef.current = false
+            return
+        }
+
+        const finalReason = reason || 'Ajuste manual'
 
         setIsSaving(true)
-        const result = await adjustStock(supply.id, numericStock, reason)
+        const result = await adjustStock(supply.id, numericStock, finalReason)
         setIsSaving(false)
 
         if (result?.error) {
@@ -39,6 +57,7 @@ export function EditableStock({ supply }: Props) {
         }
 
         setIsEditing(false)
+        isSubmittingRef.current = false
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {

@@ -1,4 +1,5 @@
 import { getSupplies } from './supplies/actions'
+import { createClient } from '@/lib/supabase'
 import { getV2Products } from './products/actions'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/Card'
@@ -14,21 +15,39 @@ function isPriceOutdated(lastCheck?: string): boolean {
 }
 
 export default async function AdminPage() {
+  const supabase = await createClient()
+
   // Cargamos datos reales para mostrar estadísticas
   const [supplies, products] = await Promise.all([
     getSupplies(),
     getV2Products()
   ])
 
+  // Traer logs de compras de hoy para filtrar
+  const today = new Date().toISOString().split('T')[0]
+  const { data: logs } = await supabase
+    .from('inventory_logs')
+    .select('supply_id, entries')
+    .eq('date', today)
+    .gt('entries', 0)
+
+  const purchasedTodayIds = new Set(logs?.map(log => log.supply_id) || [])
+
   // Cálculos rápidos
-  const lowStockSupplies = supplies
-    .filter(s => s.current_stock <= (s.min_stock || 5))
+  const allLowStockSupplies = supplies
+    .filter(s => {
+      const isLow = s.current_stock <= (s.min_stock || 5)
+      const isPurchased = purchasedTodayIds.has(s.id)
+      return isLow && !isPurchased // Ocultar si ya se compró hoy
+    })
     .sort((a, b) => {
       const aRatio = a.current_stock / (a.min_stock || 5)
       const bRatio = b.current_stock / (b.min_stock || 5)
       return aRatio - bRatio
     })
-    .slice(0, 5)
+
+  const lowStockSupplies = allLowStockSupplies.slice(0, 5)
+  const totalLowStock = allLowStockSupplies.length
 
   const outdatedPrices = supplies.filter(s => isPriceOutdated(s.last_price_check))
   const activeProducts = products.length
@@ -44,7 +63,7 @@ export default async function AdminPage() {
       {/* Tarjetas de Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Tarjeta de Inventario - MEJORADA */}
-        <Card className={lowStockSupplies.length > 0 ? 'border-[var(--color-error)] bg-red-50' : 'border-[var(--color-success)] bg-green-50'}>
+        <Card className={totalLowStock > 0 ? 'border-[var(--color-error)] bg-red-50' : 'border-[var(--color-success)] bg-green-50'}>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
               <CardTitle className="text-sm font-medium opacity-80 uppercase tracking-wide">Alertas de Stock</CardTitle>
@@ -52,11 +71,11 @@ export default async function AdminPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-4xl font-bold ${lowStockSupplies.length > 0 ? 'text-[var(--color-error)]' : 'text-[var(--color-success)]'}`}>
-              {lowStockSupplies.length}
+            <div className={`text-4xl font-bold ${totalLowStock > 0 ? 'text-[var(--color-error)]' : 'text-[var(--color-success)]'}`}>
+              {totalLowStock}
             </div>
             <p className="text-sm mt-2 opacity-70">
-              {lowStockSupplies.length > 0 ? 'Artículos requieren reabastecimiento urgente.' : 'Todo el inventario está saludable.'}
+              {totalLowStock > 0 ? 'Artículos requieren reabastecimiento urgente.' : 'Todo el inventario está saludable.'}
             </p>
 
             {/* Lista de insumos bajos */}

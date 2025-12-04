@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "TBH Admin",
+    title: "TBH Portal",
   },
 };
 

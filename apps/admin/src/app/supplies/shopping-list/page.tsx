@@ -14,7 +14,7 @@ export default async function ShoppingListPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Traemos TODOS los insumos
+  // 1. Traemos TODOS los insumos
   const { data } = await supabase
     .from('supplies')
     .select('*')
@@ -22,12 +22,29 @@ export default async function ShoppingListPage() {
 
   const supplies = (data as Supply[]) || []
 
-  // FILTRADO INTELIGENTE:
-  // Solo mostramos lo que está por debajo o igual al stock mínimo
+  // 2. Traemos logs de compras DE HOY
+  const today = new Date().toISOString().split('T')[0]
+  const { data: logs } = await supabase
+    .from('inventory_logs')
+    .select('supply_id, entries')
+    .eq('date', today)
+    .gt('entries', 0)
+
+  // Set de IDs comprados hoy
+  const purchasedTodayIds = new Set(logs?.map(log => log.supply_id) || [])
+
+  // 3. FILTRADO INTELIGENTE:
+  // - Stock bajo (<= min_stock)
+  // - NO comprado hoy
   const shoppingList = supplies.filter(item => {
-    const min = item.min_stock ?? 5 // Si es null, asumimos 5
-    return item.current_stock <= min
+    const min = item.min_stock ?? 5
+    const isLowStock = item.current_stock <= min
+    const isPurchasedToday = purchasedTodayIds.has(item.id)
+    return isLowStock && !isPurchasedToday
   })
+
+  // Lista de lo comprado hoy (para referencia)
+  const purchasedList = supplies.filter(item => purchasedTodayIds.has(item.id))
 
   // Calcular costo estimado total
   const totalCost = shoppingList.reduce((acc, item) => {
@@ -109,6 +126,23 @@ export default async function ShoppingListPage() {
           <Button className="bg-gray-800 hover:bg-black text-white">
             🖨️ Imprimir Lista
           </Button>
+        </div>
+      )}
+
+      {/* Sección de Comprado Hoy */}
+      {purchasedList.length > 0 && (
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <h3 className="text-lg font-bold text-gray-500 mb-4">✅ Comprado Hoy (Oculto de la lista)</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-75">
+            {purchasedList.map(item => (
+              <div key={item.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                <span className="font-medium text-gray-700">{item.name}</span>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  Stock: {item.current_stock} {item.unit}
+                </Badge>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

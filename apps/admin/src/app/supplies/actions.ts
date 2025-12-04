@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { Supply, SupplyUnit } from '@trailer/shared'
+import { Supply, SupplyUnit, SupplyType } from '@trailer/shared'
 import { revalidatePath } from 'next/cache'
 
 export async function getSupplies() {
@@ -26,29 +26,49 @@ export async function getSupplies() {
 export async function createSupply(formData: FormData) {
   const name = formData.get('name') as string
   const unit = formData.get('unit') as SupplyUnit
-  const packageCost = parseFloat(formData.get('package_cost') as string) || 0
-  const quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
-  const purchaseUnit = formData.get('purchase_unit') as string
+  const supplyType = (formData.get('supply_type') as SupplyType) || 'purchase'
   const minStock = parseFloat(formData.get('min_stock') as string) || 0
-  const provider = formData.get('provider') as string
-  const brand = formData.get('brand') as string
   const category = formData.get('category') as string
+  const yieldQuantity = parseFloat(formData.get('yield_quantity') as string) || 1
+  const shrinkagePercent = parseFloat(formData.get('shrinkage_percent') as string) || 0
 
-  // Calcular costo unitario automáticamente
-  const costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
+  let costPerUnit = 0
+  let packageCost = 0
+  let quantityPerPackage = 1
+  let purchaseUnit = null
+  let provider = null
+  let brand = null
+
+  if (supplyType === 'purchase') {
+    packageCost = parseFloat(formData.get('package_cost') as string) || 0
+    quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
+    purchaseUnit = formData.get('purchase_unit') as string
+    provider = formData.get('provider') as string
+    brand = formData.get('brand') as string
+
+    // Calcular costo unitario automáticamente
+    costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
+  } else {
+    // Producción Interna
+    // Si es nuevo, el costo empieza en 0 o lo que pongan manual, luego se recalcula con ingredientes
+    costPerUnit = parseFloat(formData.get('manual_cost') as string) || 0
+  }
 
   const { error } = await supabaseAdmin.from('supplies').insert({
     name,
     unit,
+    supply_type: supplyType,
     cost_per_unit: costPerUnit,
     package_cost: packageCost,
     quantity_per_package: quantityPerPackage,
-    purchase_unit: purchaseUnit || null,
+    purchase_unit: purchaseUnit,
     last_price_check: new Date().toISOString(),
     min_stock: minStock,
-    provider: provider || null,
-    brand: brand || null,
+    provider: provider,
+    brand: brand,
     category: category || null,
+    yield_quantity: yieldQuantity,
+    shrinkage_percent: shrinkagePercent,
     current_stock: 0 // Empieza en 0
   })
 
@@ -61,31 +81,64 @@ export async function createSupply(formData: FormData) {
 export async function updateSupply(id: string, formData: FormData) {
   const name = formData.get('name') as string
   const unit = formData.get('unit') as SupplyUnit
-  const packageCost = parseFloat(formData.get('package_cost') as string) || 0
-  const quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
-  const purchaseUnit = formData.get('purchase_unit') as string
+  const supplyType = (formData.get('supply_type') as SupplyType) || 'purchase'
   const minStock = parseFloat(formData.get('min_stock') as string) || 0
-  const provider = formData.get('provider') as string
-  const brand = formData.get('brand') as string
   const category = formData.get('category') as string
+  const yieldQuantity = parseFloat(formData.get('yield_quantity') as string) || 1
+  const shrinkagePercent = parseFloat(formData.get('shrinkage_percent') as string) || 0
 
-  // Calcular costo unitario automáticamente
-  const costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
+  let costPerUnit = 0
+  let packageCost = 0
+  let quantityPerPackage = 1
+  let purchaseUnit = null
+  let provider = null
+  let brand = null
+
+  // Recuperar el costo actual si no se recalculó, o confiar en el recálculo posterior
+  // Para simplificar: Si es compra, calculamos. Si es producción, mantenemos el que tiene (o manual si se envía)
+  // PERO si cambiamos el Yield, deberíamos recalcular el costo de producción.
+
+  if (supplyType === 'purchase') {
+    packageCost = parseFloat(formData.get('package_cost') as string) || 0
+    quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
+    purchaseUnit = formData.get('purchase_unit') as string
+    provider = formData.get('provider') as string
+    brand = formData.get('brand') as string
+
+    costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
+  } else {
+    // Producción: Si enviaron manual_cost, úsalo. Si no, intenta recalcular o mantener.
+    // Lo ideal es que al guardar Yield, se dispare un recálculo.
+    // Por ahora, si viene manual_cost lo usamos (para compatibilidad), si no, no lo tocamos aquí (se actualiza vía ingredientes)
+    // Sin embargo, updateSupply DEBE poder actualizar el yield.
+    const manualCost = parseFloat(formData.get('manual_cost') as string)
+    if (!isNaN(manualCost)) {
+      costPerUnit = manualCost
+    } else {
+      // Si no viene manual cost, tal vez deberíamos leer el actual de la BD, pero update requiere pasar el valor.
+      // Asumiremos que el cliente manda el costo actual si no quiere cambiarlo.
+      // O mejor: recalculamos aquí mismo si es producción.
+      costPerUnit = await calculateProductionCost(id, yieldQuantity)
+    }
+  }
 
   const { error } = await supabaseAdmin
     .from('supplies')
     .update({
       name,
       unit,
+      supply_type: supplyType,
       cost_per_unit: costPerUnit,
       package_cost: packageCost,
       quantity_per_package: quantityPerPackage,
-      purchase_unit: purchaseUnit || null,
+      purchase_unit: purchaseUnit,
       last_price_check: new Date().toISOString(), // Actualizar fecha de verificación
       min_stock: minStock,
-      provider: provider || null,
-      brand: brand || null,
-      category: category || null
+      provider: provider,
+      brand: brand,
+      category: category || null,
+      yield_quantity: yieldQuantity,
+      shrinkage_percent: shrinkagePercent
     })
     .eq('id', id)
 
@@ -94,7 +147,100 @@ export async function updateSupply(id: string, formData: FormData) {
   return { success: true }
 }
 
-// BORRAR INSUMO (Opcional, cuidado con integridad referencial)
+// --- GESTIÓN DE SUB-RECETAS (INGREDIENTES DE INSUMOS) ---
+
+async function calculateProductionCost(supplyId: string, yieldQty: number): Promise<number> {
+  // 1. Obtener ingredientes
+  const { data: ingredients } = await supabaseAdmin
+    .from('supply_ingredients')
+    .select('quantity, child_supply:supplies!supply_ingredients_child_supply_id_fkey(cost_per_unit, shrinkage_percent)')
+    .eq('parent_supply_id', supplyId)
+
+  if (!ingredients || ingredients.length === 0) return 0
+
+  // 2. Sumar costos (Costo Insumo * Cantidad Usada)
+  const totalCost = ingredients.reduce((sum, item: any) => {
+    const cost = item.child_supply?.cost_per_unit || 0
+    return sum + (cost * item.quantity)
+  }, 0)
+
+  // 3. Dividir por rendimiento
+  return yieldQty > 0 ? totalCost / yieldQty : 0
+}
+
+export async function getSupplyIngredients(supplyId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('supply_ingredients')
+    .select('*, child_supply:supplies!supply_ingredients_child_supply_id_fkey(*)')
+    .eq('parent_supply_id', supplyId)
+
+  if (error) {
+    console.error('Error fetching ingredients:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function addSupplyIngredient(parentSupplyId: string, childSupplyId: string, quantity: number) {
+  console.log(`Adding ingredient: Parent=${parentSupplyId}, Child=${childSupplyId}, Qty=${quantity}`)
+
+  const { error } = await supabaseAdmin
+    .from('supply_ingredients')
+    .insert({
+      parent_supply_id: parentSupplyId,
+      child_supply_id: childSupplyId,
+      quantity: quantity
+    })
+
+  if (error) {
+    console.error('Error adding ingredient:', error)
+    return { error: error.message }
+  }
+
+  // Recalcular costo del padre
+  await triggerCostRecalculation(parentSupplyId)
+
+  revalidatePath('/supplies')
+  return { success: true }
+}
+
+export async function removeSupplyIngredient(ingredientId: string, parentSupplyId: string) {
+  const { error } = await supabaseAdmin
+    .from('supply_ingredients')
+    .delete()
+    .eq('id', ingredientId)
+
+  if (error) return { error: error.message }
+
+  // Recalcular costo del padre
+  await triggerCostRecalculation(parentSupplyId)
+
+  revalidatePath('/supplies')
+  return { success: true }
+}
+
+async function triggerCostRecalculation(supplyId: string) {
+  // 1. Obtener yield actual
+  const { data: supply } = await supabaseAdmin
+    .from('supplies')
+    .select('yield_quantity')
+    .eq('id', supplyId)
+    .single()
+
+  if (!supply) return
+
+  // 2. Calcular nuevo costo
+  const newCost = await calculateProductionCost(supplyId, supply.yield_quantity || 1)
+
+  // 3. Actualizar
+  await supabaseAdmin
+    .from('supplies')
+    .update({ cost_per_unit: newCost })
+    .eq('id', supplyId)
+}
+
 // BORRAR INSUMO
 export async function deleteSupply(id: string) {
   // 1. Primero borramos el historial (Logs) de este insumo para evitar error de FK
@@ -107,13 +253,16 @@ export async function deleteSupply(id: string) {
     return { error: `No se pudo borrar el historial: ${logsError.message}` }
   }
 
+  // 1.5 Borrar ingredientes donde este insumo sea padre (cascade debería encargarse, pero por si acaso)
+  // Y verificar si es hijo en otro lado (RESTRICT en BD lo impedirá)
+
   // 2. Ahora sí borramos el insumo
   const { error } = await supabaseAdmin.from('supplies').delete().eq('id', id)
 
   if (error) {
     // Si falla aquí, puede ser por otra tabla (ej. recetas/ingredientes)
     if (error.code === '23503') {
-      return { error: 'No se puede borrar: Este insumo se usa en una Receta (Ingredients).' }
+      return { error: 'No se puede borrar: Este insumo se usa en una Receta o Sub-receta.' }
     }
     return { error: `Error al borrar: ${error.message}` }
   }
@@ -124,10 +273,13 @@ export async function deleteSupply(id: string) {
 
 // 4. REGISTRAR COMPRA (Aumentar Stock)
 export async function addStock(supplyId: string, quantity: number) {
-  const supabase = await createClient() // Usamos cliente normal o admin según prefieras auditoría
+  const supabase = await createClient()
 
-  // 1. Obtener stock actual para sumar (o usar una función RPC de base de datos si hay concurrencia alta)
-  // Por simplicidad, leeremos y sumaremos aquí.
+  // 1. Obtener usuario actual
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuario no autenticado' }
+
+  // 2. Obtener stock actual
   const { data: item } = await supabaseAdmin
     .from('supplies')
     .select('current_stock')
@@ -136,8 +288,10 @@ export async function addStock(supplyId: string, quantity: number) {
 
   if (!item) return { error: 'Insumo no encontrado' }
 
-  const newStock = (item.current_stock || 0) + quantity
+  const oldStock = item.current_stock || 0
+  const newStock = oldStock + quantity
 
+  // 3. Actualizar stock
   const { error } = await supabaseAdmin
     .from('supplies')
     .update({ current_stock: newStock })
@@ -145,8 +299,27 @@ export async function addStock(supplyId: string, quantity: number) {
 
   if (error) return { error: error.message }
 
+  // 4. Registrar en inventory_logs
+  const { error: logError } = await supabaseAdmin
+    .from('inventory_logs')
+    .insert({
+      supply_id: supplyId,
+      user_id: user.id,
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+      initial_stock: oldStock,
+      entries: quantity,
+      exits: 0,
+      final_count: newStock,
+      comments: 'Compra rápida desde Shopping List'
+    })
+
+  if (logError) {
+    console.error('Error logging purchase:', logError)
+    // No fallamos la request completa si solo falló el log, pero es bueno saberlo
+  }
+
   revalidatePath('/supplies')
-  revalidatePath('/supplies/shopping-list') // Importante refrescar la lista
+  revalidatePath('/supplies/shopping-list')
   return { success: true }
 }
 
