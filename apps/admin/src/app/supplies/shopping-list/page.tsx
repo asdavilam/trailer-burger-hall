@@ -22,8 +22,8 @@ export default async function ShoppingListPage() {
 
   const supplies = (data as Supply[]) || []
 
-  // 2. Traemos logs de compras DE HOY
-  const today = new Date().toISOString().split('T')[0]
+  // 2. Traemos logs de compras DE HOY (Zona Horaria México)
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const { data: logs } = await supabase
     .from('inventory_logs')
     .select('supply_id, entries')

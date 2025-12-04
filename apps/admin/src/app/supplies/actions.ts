@@ -305,7 +305,7 @@ export async function addStock(supplyId: string, quantity: number) {
     .insert({
       supply_id: supplyId,
       user_id: user.id,
-      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+      date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }), // YYYY-MM-DD (MX)
       initial_stock: oldStock,
       entries: quantity,
       exits: 0,
@@ -356,7 +356,7 @@ export async function adjustStock(supplyId: string, newStock: number, reason: st
     .insert({
       supply_id: supplyId,
       user_id: user.id,
-      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+      date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }), // YYYY-MM-DD (MX)
       initial_stock: oldStock,
       entries: changeAmount > 0 ? changeAmount : 0,
       exits: changeAmount < 0 ? Math.abs(changeAmount) : 0,
