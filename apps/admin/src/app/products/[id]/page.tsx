@@ -6,10 +6,14 @@ import { VariantsTable } from './VariantsTable'
 import { ModifiersSelector } from './ModifiersSelector'
 import Link from 'next/link'
 
-export default async function ProductEditorPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProductEditorPage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
   const { id } = await params
   const supabase = await createClient()
-  
+
   // Auth Check
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

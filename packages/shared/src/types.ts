@@ -55,14 +55,17 @@ export type UserProfile = {
 
 export type SupplyUnit = 'kg' | 'lt' | 'pz' | 'gr' | 'ml';
 
+export type SupplyType = 'purchase' | 'production';
+
 export type Supply = {
   id: string;
   name: string;
   unit: SupplyUnit;
   cost_per_unit: number;
-  package_cost?: number;
-  quantity_per_package?: number;
-  purchase_unit?: string;
+  supply_type?: SupplyType; // Nuevo campo
+  package_cost?: number | null;
+  quantity_per_package?: number | null;
+  purchase_unit?: string | null;
   last_price_check?: string;
   price_trend?: 'up' | 'down' | 'stable';
   current_stock: number;
@@ -70,7 +73,17 @@ export type Supply = {
   provider?: string | null;
   brand?: string | null;
   category?: string | null;
+  yield_quantity?: number; // Rendimiento de la receta (default 1)
+  shrinkage_percent?: number; // Porcentaje de merma (0-100)
   created_at?: string;
+};
+
+export type SupplyIngredient = {
+  id: string;
+  parent_supply_id: string;
+  child_supply_id: string;
+  quantity: number;
+  child_supply?: Supply; // Para mostrar el nombre
 };
 
 export type InventoryAssignment = {

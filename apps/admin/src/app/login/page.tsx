@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { LoginForm } from './LoginForm'
 import { InstallPWA } from '@/components/InstallPWA'
+import { APP_VERSION } from '@/lib/version'
 
 export default async function AdminLoginPage({
   searchParams,
@@ -39,6 +40,7 @@ export default async function AdminLoginPage({
             </div>
             <p className="text-xs text-gray-400">
               &copy; {new Date().getFullYear()} Trailer Burger Hall. Acceso restringido.
+              <span className="block mt-1 opacity-50">{APP_VERSION}</span>
             </p>
           </div>
         </div>

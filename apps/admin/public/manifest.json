@@ -1,7 +1,7 @@
 {
-  "name": "TBH Admin Portal",
-  "short_name": "TBH Admin",
-  "description": "Portal de Administración Trailer Burger Hall",
+  "name": "TBH Portal",
+  "short_name": "TBH Portal",
+  "description": "Portal de Trailer Burger Hall",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

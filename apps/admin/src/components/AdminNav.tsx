@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { LogoutBtn } from './LogoutBtn'
 import { InstallPWA } from './InstallPWA'
+import { APP_VERSION } from '@/lib/version'
 
 // Definición de las sub-rutas de inventario para reutilizar
 const inventorySubItems = [
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
         children: inventorySubItems
     },
     { label: 'Equipo', href: '/team' },
+    { label: 'Configuración', href: '/settings' },
 ]
 
 import { createClient } from '@/lib/supabase-client'
@@ -168,11 +170,15 @@ export function AdminNav() {
         <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
+
                     {/* Logo y Escritorio */}
                     <div className="flex">
-                        <div className="flex-shrink-0 flex items-center">
+                        <div className="flex-shrink-0 flex items-center gap-2">
                             <span className="text-xl font-display font-bold text-[var(--color-primary)]">
                                 TBH Portal
+                            </span>
+                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-mono">
+                                {APP_VERSION}
                             </span>
                         </div>
 

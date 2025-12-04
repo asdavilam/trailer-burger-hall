@@ -106,6 +106,7 @@ export async function inviteUser(formData: FormData) {
 }
 
 // 4. ELIMINAR USUARIO
+// 4. ELIMINAR USUARIO
 export async function deleteUser(userId: string) {
   try {
     const me = await requireAdmin()
@@ -117,6 +118,32 @@ export async function deleteUser(userId: string) {
 
     if (error) throw error
     revalidatePath('/team')
+    return { success: true }
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+// 5. REENVIAR INVITACIÓN
+export async function resendInvite(email: string) {
+  try {
+    await requireAdmin()
+
+    const getBaseUrl = () => {
+      if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
+      if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+      if (process.env.NODE_ENV === 'production') return 'https://portal.trailerburgerhall.com.mx'
+      return 'http://localhost:3000'
+    }
+
+    const redirectUrl = `${getBaseUrl()}/auth/callback`
+
+    // Al invitar de nuevo a un email existente, Supabase reenvía el correo
+    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: redirectUrl
+    })
+
+    if (error) throw error
     return { success: true }
   } catch (e: any) {
     return { error: e.message }
