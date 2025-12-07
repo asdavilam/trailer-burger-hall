@@ -55,6 +55,8 @@ export type UserProfile = {
 
 export type SupplyUnit = 'kg' | 'lt' | 'pz' | 'gr' | 'ml';
 
+export type CountingMode = 'integer' | 'fraction' | 'fuzzy';
+
 export type SupplyType = 'purchase' | 'production';
 
 export type Supply = {
@@ -62,6 +64,7 @@ export type Supply = {
   name: string;
   unit: SupplyUnit;
   cost_per_unit: number;
+  counting_mode: CountingMode; // Nuevo campo
   supply_type?: SupplyType; // Nuevo campo
   package_cost?: number | null;
   quantity_per_package?: number | null;
@@ -75,6 +78,7 @@ export type Supply = {
   category?: string | null;
   yield_quantity?: number; // Rendimiento de la receta (default 1)
   shrinkage_percent?: number; // Porcentaje de merma (0-100)
+  abc_classification?: 'A' | 'B' | 'C'; // Clasificación ABC
   created_at?: string;
 };
 

@@ -26,7 +26,7 @@ export default async function AdminLoginPage({
             />
           </div>
           <h1 className="text-[#C08A3E] font-display text-2xl font-bold tracking-wider uppercase">
-            Portal Admin
+            Portal TBH
           </h1>
         </div>
 

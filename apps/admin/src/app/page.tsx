@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 
-// Función para verificar si el precio está desactualizado (más de 30 días)
-function isPriceOutdated(lastCheck?: string): boolean {
-  if (!lastCheck) return true
-  const daysSinceCheck = Math.floor((Date.now() - new Date(lastCheck).getTime()) / (1000 * 60 * 60 * 24))
-  return daysSinceCheck > 30
+// Función para verificar si el precio requiere atención (0, null o > 30 días)
+function getPriceStatus(supply: any): 'ok' | 'missing' | 'outdated' {
+  if (!supply.cost_per_unit || supply.cost_per_unit === 0) return 'missing'
+
+  if (!supply.last_price_check) return 'outdated'
+
+  const daysSinceCheck = Math.floor((Date.now() - new Date(supply.last_price_check).getTime()) / (1000 * 60 * 60 * 24))
+  return daysSinceCheck > 30 ? 'outdated' : 'ok'
 }
 
 export default async function AdminPage() {
@@ -49,7 +52,7 @@ export default async function AdminPage() {
   const lowStockSupplies = allLowStockSupplies.slice(0, 5)
   const totalLowStock = allLowStockSupplies.length
 
-  const outdatedPrices = supplies.filter(s => isPriceOutdated(s.last_price_check))
+  const priceAlerts = supplies.filter(s => getPriceStatus(s) !== 'ok')
   const activeProducts = products.length
 
   return (
@@ -104,7 +107,7 @@ export default async function AdminPage() {
         </Card>
 
         {/* Tarjeta de Precios Desactualizados - NUEVA */}
-        <Card className={outdatedPrices.length > 0 ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200'}>
+        <Card className={priceAlerts.length > 0 ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200'}>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
               <CardTitle className="text-sm font-medium opacity-80 uppercase tracking-wide">Precios a Verificar</CardTitle>
@@ -112,22 +115,24 @@ export default async function AdminPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-4xl font-bold ${outdatedPrices.length > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>
-              {outdatedPrices.length}
+            <div className={`text-4xl font-bold ${priceAlerts.length > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>
+              {priceAlerts.length}
             </div>
             <p className="text-sm mt-2 opacity-70">
-              {outdatedPrices.length > 0
-                ? `${outdatedPrices.length} precio${outdatedPrices.length > 1 ? 's' : ''} sin verificar en 30+ días.`
+              {priceAlerts.length > 0
+                ? `${priceAlerts.length} insumo${priceAlerts.length > 1 ? 's' : ''} requieren revisión de precio.`
                 : 'Todos los precios están actualizados.'}
             </p>
 
             {/* Lista de precios desactualizados */}
-            {outdatedPrices.length > 0 && (
+            {priceAlerts.length > 0 && (
               <div className="mt-4 space-y-2">
-                {outdatedPrices.slice(0, 5).map(supply => {
+                {priceAlerts.slice(0, 5).map(supply => {
+                  const status = getPriceStatus(supply)
                   const daysOld = supply.last_price_check
                     ? Math.floor((Date.now() - new Date(supply.last_price_check).getTime()) / (1000 * 60 * 60 * 24))
                     : 999
+
                   return (
                     <Link
                       key={supply.id}
@@ -135,9 +140,13 @@ export default async function AdminPage() {
                       className="flex items-center justify-between p-2 bg-white/70 rounded hover:bg-white transition-colors text-sm"
                     >
                       <span className="font-medium text-gray-700 truncate">{supply.name}</span>
-                      <Badge variant="warning" className="ml-2 shrink-0">
-                        {daysOld > 365 ? '+1 año' : `${daysOld}d`}
-                      </Badge>
+                      {status === 'missing' ? (
+                        <Badge className="ml-2 shrink-0 bg-red-100 text-red-800 hover:bg-red-200">Sin Precio</Badge>
+                      ) : (
+                        <Badge variant="warning" className="ml-2 shrink-0">
+                          {daysOld > 365 ? '+1 año' : `${daysOld}d`}
+                        </Badge>
+                      )}
                     </Link>
                   )
                 })}

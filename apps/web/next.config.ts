@@ -6,7 +6,7 @@ const withPWA = withPWAInit({
   dest: 'public',
   register: false,
   skipWaiting: true,
-  // disable: process.env.NODE_ENV === 'development',
+  disable: process.env.NODE_ENV === 'development',
   fallbacks: {
     document: '/offline.html',
     image: '/icons/icon-192.png',

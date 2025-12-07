@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { getFinancialSettings } from '@/app/settings/actions'
 
 export default async function ShoppingListPage() {
   const supabase = await createClient()
@@ -21,6 +22,10 @@ export default async function ShoppingListPage() {
     .order('name')
 
   const supplies = (data as Supply[]) || []
+
+  // 1.5 Traemos settings para el multiplicador de buffer
+  const settings = await getFinancialSettings()
+  const bufferMultiplier = settings.stock_buffer_multiplier || 2.0
 
   // 2. Traemos logs de compras DE HOY (Zona Horaria México)
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
@@ -48,7 +53,9 @@ export default async function ShoppingListPage() {
 
   // Calcular costo estimado total
   const totalCost = shoppingList.reduce((acc, item) => {
-    const missing = (item.min_stock || 5) * 2 - item.current_stock // Meta: llegar al doble del mínimo
+    // Calcular meta usando el multiplicador configurado (default x2)
+    const target = (item.min_stock || 5) * bufferMultiplier
+    const missing = target - item.current_stock
     const cost = missing > 0 ? missing * item.cost_per_unit : 0
     return acc + cost
   }, 0)
@@ -57,7 +64,7 @@ export default async function ShoppingListPage() {
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
       <PageHeader
         title="Lista de Compras 🛒"
-        description="Insumos con stock crítico que necesitas reponer."
+        description={`Insumos a reponer (Meta: x${bufferMultiplier} del mínimo).`}
       >
         <Button variant="ghost" asChild>
           <Link href="/supplies">
@@ -81,8 +88,9 @@ export default async function ShoppingListPage() {
 
           <div className="space-y-4">
             {shoppingList.map((item) => {
-              // Calculamos cuánto falta para la meta (doble del mínimo)
-              const missing = (item.min_stock || 5) * 2 - item.current_stock
+              // Calculamos cuánto falta para la meta (usando multiplicador)
+              const target = (item.min_stock || 5) * bufferMultiplier
+              const missing = target - item.current_stock
 
               return (
                 <Card key={item.id} className="overflow-hidden">
@@ -94,7 +102,7 @@ export default async function ShoppingListPage() {
                         <div className="font-bold text-[var(--color-secondary)] text-lg">{item.name}</div>
                         <div className="text-sm text-gray-500">
                           Tienes: <span className="font-bold text-[var(--color-error)]">{item.current_stock} {item.unit}</span>
-                          {' '}/ Meta: {(item.min_stock || 5) * 2}
+                          {' '}/ Meta: {target.toFixed(1)} <span className="text-xs text-gray-400">(x{bufferMultiplier})</span>
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
                           Prov: {item.provider || 'Genérico'}

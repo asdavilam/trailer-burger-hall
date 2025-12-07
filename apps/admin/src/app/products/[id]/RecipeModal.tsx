@@ -1,11 +1,11 @@
 'use client'
 import { useState, useEffect, useTransition } from 'react'
-import { getVariantIngredients, addIngredientToVariant, removeIngredientV2 } from '../actions'
+import { getVariantIngredients, addIngredientToVariant, removeIngredientV2, updateVariantPrice } from '../actions'
 import { getSupplies } from '@/app/supplies/actions'
 import { getFinancialSettings, FinancialSettings } from '@/app/settings/actions'
 
 type Props = {
-  variant: { id: string, name: string }
+  variant: { id: string, name: string, price?: number }
   onClose: () => void
 }
 
@@ -22,22 +22,42 @@ export function RecipeModal({ variant, onClose }: Props) {
   const [selectedUnit, setSelectedUnit] = useState('')
 
   // Calculadora de Precio
-  const [salePrice, setSalePrice] = useState<string>('')
+  // Iniciamos con el precio que ya tiene el producto (si tiene)
+  const [salePrice, setSalePrice] = useState<string>(variant.price?.toString() || '')
   const [desiredMargin, setDesiredMargin] = useState<string>('')
 
-  // Cargar datos al abrir
+  // 2. Cargar datos financieros
   useEffect(() => {
-    Promise.all([
-      getVariantIngredients(variant.id),
-      getSupplies(),
-      getFinancialSettings()
-    ]).then(([ing, sup, set]) => {
-      setIngredients(ing)
-      setSupplies(sup)
-      setSettings(set)
-      setIsLoading(false)
-    })
-  }, [variant.id])
+    async function loadData() {
+      // Fetch all data concurrently
+      const [ing, sup, s] = await Promise.all([
+        getVariantIngredients(variant.id),
+        getSupplies(),
+        getFinancialSettings()
+      ]);
+
+      setIngredients(ing);
+      setSupplies(sup);
+      setSettings(s);
+
+      // Precio Variante
+      if (variant.price) {
+        setSalePrice(variant.price.toString());
+      }
+
+      // Si no tenemos precio definido, podemos pre-llenar el margen deseado con el default
+      // Solo si no hay un precio de venta y el margen deseado no ha sido establecido
+      if (!variant.price && !desiredMargin && s.default_margin_percent) {
+        setDesiredMargin(s.default_margin_percent.toString());
+      } else if (!variant.price && !desiredMargin) {
+        // Fallback if default_margin_percent is not set
+        setDesiredMargin('30');
+      }
+
+      setIsLoading(false);
+    }
+    loadData();
+  }, [variant.id, variant.price]); // Removido desiredMargin de deps para evitar loops
 
   // Resetear unidad cuando cambia el insumo
   useEffect(() => {
@@ -114,6 +134,16 @@ export function RecipeModal({ variant, onClose }: Props) {
   const profit = price - totalUnitCost
   const margin = price > 0 ? (profit / price) * 100 : 0
 
+  // Actualizar el input de "Margen Deseado" cuando cambia el COSTO (ej. al editar receta)
+  useEffect(() => {
+    // Solo si ya hay un precio definido, recalculamos el margen para que coincida con la realidad
+    const p = parseFloat(salePrice)
+    if (p > 0 && totalUnitCost > 0) {
+      const m = ((p - totalUnitCost) / p) * 100
+      setDesiredMargin(m.toFixed(1))
+    }
+  }, [totalUnitCost])
+
   // Handlers para la calculadora
   const handlePriceChange = (val: string) => {
     setSalePrice(val)
@@ -151,6 +181,8 @@ export function RecipeModal({ variant, onClose }: Props) {
       default: return [{ value: baseUnit, label: baseUnit }]
     }
   }
+
+  const markup = totalUnitCost > 0 ? ((profit / totalUnitCost) * 100) : 0
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -281,15 +313,33 @@ export function RecipeModal({ variant, onClose }: Props) {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Precio Sugerido</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-400">$</span>
-                    <input
-                      type="number"
-                      value={salePrice}
-                      onChange={e => handlePriceChange(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full pl-7 p-2 border rounded-lg font-bold text-lg focus:ring-2 ring-purple-500 outline-none"
-                    />
+                  <div className="relative flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-2 text-gray-400">$</span>
+                      <input
+                        type="number"
+                        value={salePrice}
+                        onChange={e => handlePriceChange(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full pl-7 p-2 border rounded-lg font-bold text-lg focus:ring-2 ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        const p = parseFloat(salePrice)
+                        if (p > 0) {
+                          startTransition(async () => {
+                            await updateVariantPrice(variant.id, p)
+                            alert('Precio actualizado correctamente')
+                          })
+                        }
+                      }}
+                      disabled={isPending || !salePrice}
+                      className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 text-xs"
+                      title="Guardar este precio"
+                    >
+                      💾
+                    </button>
                   </div>
                 </div>
               </div>
@@ -308,8 +358,13 @@ export function RecipeModal({ variant, onClose }: Props) {
                       style={{ width: `${Math.min(Math.max(margin, 0), 100)}%` }}
                     ></div>
                   </div>
-                  <div className="text-right text-xs font-bold opacity-60">
-                    Margen Real: {margin.toFixed(1)}%
+                  <div className="flex justify-between items-end mt-2">
+                    <div className="text-xs text-gray-500">
+                      Markup: {markup.toFixed(0)}%
+                    </div>
+                    <div className="text-right text-xs font-bold opacity-80">
+                      Margen Real: {margin.toFixed(1)}%
+                    </div>
                   </div>
                 </div>
               )}
