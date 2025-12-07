@@ -16,6 +16,10 @@ export type FinancialSettings = {
     avg_sales_per_day: number
     default_min_stock: number
     card_commission_percent: number
+    abc_days_b: number[] // Días de la semana (0-6) para grupo B
+    abc_days_c: number[] // Días de la semana (0-6) para grupo C
+    default_margin_percent: number
+    stock_buffer_multiplier: number
 }
 
 const DEFAULT_SETTINGS: FinancialSettings = {
@@ -29,7 +33,11 @@ const DEFAULT_SETTINGS: FinancialSettings = {
     work_days_per_month: 20,
     avg_sales_per_day: 60,
     default_min_stock: 5,
-    card_commission_percent: 4.06
+    card_commission_percent: 4.06,
+    abc_days_b: [1, 4], // Lunes y Jueves
+    abc_days_c: [0],    // Domingo
+    default_margin_percent: 30, // Valor por defecto
+    stock_buffer_multiplier: 2.0 // Valor por defecto (Doble del mínimo)
 }
 
 export async function getFinancialSettings() {
@@ -49,6 +57,10 @@ export async function getFinancialSettings() {
 }
 
 export async function updateFinancialSettings(formData: FormData) {
+    console.log('--- Updating Settings ---')
+    console.log('abc_days_b raw:', formData.get('abc_days_b'))
+    console.log('abc_days_c raw:', formData.get('abc_days_c'))
+
     const settings: FinancialSettings = {
         rent_cost: parseFloat(formData.get('rent_cost') as string) || 0,
         salaries_cost: parseFloat(formData.get('salaries_cost') as string) || 0,
@@ -61,6 +73,10 @@ export async function updateFinancialSettings(formData: FormData) {
         avg_sales_per_day: parseFloat(formData.get('avg_sales_per_day') as string) || 60,
         default_min_stock: parseFloat(formData.get('default_min_stock') as string) || 5,
         card_commission_percent: parseFloat(formData.get('card_commission_percent') as string) || 4.06,
+        abc_days_b: JSON.parse(formData.get('abc_days_b') as string || '[1, 4]'),
+        abc_days_c: JSON.parse(formData.get('abc_days_c') as string || '[0]'),
+        default_margin_percent: parseFloat(formData.get('default_margin_percent') as string) || 30,
+        stock_buffer_multiplier: parseFloat(formData.get('stock_buffer_multiplier') as string) || 2.0,
     }
 
     const { error } = await supabaseAdmin
@@ -76,5 +92,6 @@ export async function updateFinancialSettings(formData: FormData) {
     }
 
     revalidatePath('/settings')
+    revalidatePath('/supplies/shopping-list')
     return { success: true }
 }

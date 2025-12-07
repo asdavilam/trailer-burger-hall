@@ -50,7 +50,7 @@ export default async function HomePage() {
   const settingsValue = (settings as SettingsRow['value'] | null) ?? null
   const hours = settingsValue?.opening_hours ?? []
 
-  const siteUrl = process.env.SITE_URL || 'https://www.trailerburgerhall.com.mx'
+  const siteUrl = process.env.SITE_URL || 'https://www.trailerburger.mx'
   const openingHoursSpecification = hours.map((h) => ({
     '@type': 'OpeningHoursSpecification',
     dayOfWeek: h.dayOfWeek,

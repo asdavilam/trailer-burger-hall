@@ -2,6 +2,7 @@ import { getFinancialSettings } from './actions'
 import SettingsPage from './SettingsPage'
 import { createClient } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
+import { getSupplies } from '../supplies/actions'
 
 export default async function Page() {
     const supabase = await createClient()
@@ -28,6 +29,7 @@ export default async function Page() {
     }
 
     const settings = await getFinancialSettings()
+    const supplies = await getSupplies()
 
-    return <SettingsPage initialSettings={settings} />
+    return <SettingsPage initialSettings={settings} supplies={supplies} />
 }

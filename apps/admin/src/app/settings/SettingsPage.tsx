@@ -5,8 +5,12 @@ import { FinancialSettings, updateFinancialSettings } from './actions'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Supply } from '@trailer/shared'
+import { CountingModeSettings } from './CountingModeSettings'
+import { ClassificationSettings } from './ClassificationSettings'
+import { DaySelector } from './DaySelector'
 
-export default function SettingsPage({ initialSettings }: { initialSettings: FinancialSettings }) {
+export default function SettingsPage({ initialSettings, supplies }: { initialSettings: FinancialSettings, supplies: Supply[] }) {
     const [activeTab, setActiveTab] = useState<'finance' | 'inventory' | 'permissions'>('finance')
     const [loading, setLoading] = useState(false)
 
@@ -40,13 +44,12 @@ export default function SettingsPage({ initialSettings }: { initialSettings: Fin
             </div>
 
             {/* Content */}
-            {/* Content */}
             {activeTab === 'finance' && (
                 <FinanceSettingsForm initialSettings={initialSettings} />
             )}
 
             {activeTab === 'inventory' && (
-                <InventorySettingsForm initialSettings={initialSettings} />
+                <InventorySettingsForm initialSettings={initialSettings} supplies={supplies} />
             )}
 
             {activeTab === 'permissions' && (
@@ -146,21 +149,39 @@ function FinanceSettingsForm({ initialSettings }: { initialSettings: FinancialSe
                                 <input name="avg_sales_per_day" type="number" defaultValue={initialSettings.avg_sales_per_day} disabled={!isEditing} className="p-2 border rounded disabled:bg-gray-100" />
                             </div>
 
-                            <div className="border-t pt-4 mt-4">
-                                <label className="block text-sm font-bold text-purple-700 mb-2">💳 Comisión Tarjeta / Terminal (%)</label>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        name="card_commission_percent"
-                                        type="number"
-                                        step="0.01"
-                                        defaultValue={initialSettings.card_commission_percent || 4.06}
-                                        disabled={!isEditing}
-                                        className="p-2 border rounded disabled:bg-gray-100 w-24 font-bold text-right"
-                                    />
-                                    <span className="text-gray-500">%</span>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-purple-700 mb-2">💳 Comisión Tarjeta / Terminal (%)</label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            name="card_commission_percent"
+                                            type="number"
+                                            step="0.01"
+                                            defaultValue={initialSettings.card_commission_percent || 4.06}
+                                            disabled={!isEditing}
+                                            className="p-2 border rounded disabled:bg-gray-100 w-24 font-bold text-right"
+                                        />
+                                        <span className="text-gray-500">%</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">Este porcentaje se usará para calcular el precio sugerido con tarjeta.</p>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-1">Este porcentaje se usará para calcular el precio sugerido con tarjeta.</p>
+                                <div>
+                                    <label className="block text-sm font-bold text-green-700 mb-2">📈 Margen de Ganancia por Defecto (%)</label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            name="default_margin_percent"
+                                            type="number"
+                                            step="1"
+                                            defaultValue={initialSettings.default_margin_percent || 30}
+                                            disabled={!isEditing}
+                                            className="p-2 border rounded disabled:bg-gray-100 w-24 font-bold text-right"
+                                        />
+                                        <span className="text-gray-500">%</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">Se usará automáticamente en recetas nuevas sin precio definido.</p>
+                                </div>
                             </div>
+
                         </CardContent>
                     </Card>
 
@@ -173,69 +194,118 @@ function FinanceSettingsForm({ initialSettings }: { initialSettings: FinancialSe
 
             {/* Campos ocultos de inventario para no perderlos al guardar finanzas */}
             <input type="hidden" name="default_min_stock" value={initialSettings.default_min_stock} />
-        </form>
+            <input type="hidden" name="abc_days_b" value={JSON.stringify(initialSettings.abc_days_b || [1, 4])} />
+            <input type="hidden" name="abc_days_c" value={JSON.stringify(initialSettings.abc_days_c || [0])} />
+            <input type="hidden" name="stock_buffer_multiplier" value={initialSettings.stock_buffer_multiplier} />
+        </form >
     )
 }
 
-function InventorySettingsForm({ initialSettings }: { initialSettings: FinancialSettings }) {
+function InventorySettingsForm({ initialSettings, supplies }: { initialSettings: FinancialSettings, supplies: Supply[] }) {
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
 
     return (
-        <form action={async (formData) => {
-            setLoading(true)
-            const res = await updateFinancialSettings(formData) // Reusamos la misma action por ahora
-            setLoading(false)
-            if (res?.error) alert('Error: ' + res.error)
-            else {
-                alert('Configuración guardada')
-                setIsEditing(false)
-            }
-        }}>
-            {/* Campos ocultos para mantener los valores financieros */}
-            <input type="hidden" name="rent_cost" value={initialSettings.rent_cost} />
-            <input type="hidden" name="salaries_cost" value={initialSettings.salaries_cost} />
-            <input type="hidden" name="water_cost" value={initialSettings.water_cost} />
-            <input type="hidden" name="electricity_cost" value={initialSettings.electricity_cost} />
-            <input type="hidden" name="marketing_cost" value={initialSettings.marketing_cost} />
-            <input type="hidden" name="taxes_cost" value={initialSettings.taxes_cost} />
-            <input type="hidden" name="other_costs" value={initialSettings.other_costs} />
-            <input type="hidden" name="work_days_per_month" value={initialSettings.work_days_per_month} />
-            <input type="hidden" name="avg_sales_per_day" value={initialSettings.avg_sales_per_day} />
-            <input type="hidden" name="card_commission_percent" value={initialSettings.card_commission_percent} />
+        <>
+            <form action={async (formData) => {
+                setLoading(true)
+                const res = await updateFinancialSettings(formData) // Reusamos la misma action por ahora
+                setLoading(false)
+                if (res?.error) alert('Error: ' + res.error)
+                else {
+                    alert('Configuración guardada')
+                    setIsEditing(false)
+                }
+            }}>
+                {/* Campos ocultos para mantener los valores financieros */}
+                <input type="hidden" name="rent_cost" value={initialSettings.rent_cost} />
+                <input type="hidden" name="salaries_cost" value={initialSettings.salaries_cost} />
+                <input type="hidden" name="water_cost" value={initialSettings.water_cost} />
+                <input type="hidden" name="electricity_cost" value={initialSettings.electricity_cost} />
+                <input type="hidden" name="marketing_cost" value={initialSettings.marketing_cost} />
+                <input type="hidden" name="taxes_cost" value={initialSettings.taxes_cost} />
+                <input type="hidden" name="other_costs" value={initialSettings.other_costs} />
+                <input type="hidden" name="work_days_per_month" value={initialSettings.work_days_per_month} />
+                <input type="hidden" name="avg_sales_per_day" value={initialSettings.avg_sales_per_day} />
+                <input type="hidden" name="avg_sales_per_day" value={initialSettings.avg_sales_per_day} />
+                <input type="hidden" name="card_commission_percent" value={initialSettings.card_commission_percent} />
+                <input type="hidden" name="default_margin_percent" value={initialSettings.default_margin_percent} />
+                <input type="hidden" name="default_margin_percent" value={initialSettings.default_margin_percent} />
+                {/* Los inputs de abc_days se manejan dentro del DaySelector, pero necesitamos asegurarnos de que se envíen si no se renderiza el form de inventario... 
+                    Espera, este form ES el de inventario. El DaySelector debe generar el input hidden. 
+                    Pero si estamos en Finance form, necesitamos los hidden inputs de inventory settings.
+                */}
 
-            <div className="flex justify-end mb-4">
-                {!isEditing ? (
-                    <Button type="button" onClick={() => setIsEditing(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-                        ✏️ Editar Inventario
-                    </Button>
-                ) : (
-                    <div className="flex gap-2">
-                        <Button type="button" onClick={() => setIsEditing(false)} variant="outline" className="text-gray-600">
-                            Cancelar
+                <div className="flex justify-end mb-4">
+                    {!isEditing ? (
+                        <Button type="button" onClick={() => setIsEditing(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            ✏️ Editar Inventario
                         </Button>
-                        <Button type="submit" disabled={loading} className="bg-green-600 hover:bg-green-700 text-white">
-                            {loading ? 'Guardando...' : '💾 Guardar Cambios'}
-                        </Button>
-                    </div>
-                )}
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Metas de Inventario</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="max-w-md">
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Stock Mínimo por Defecto</label>
+                    ) : (
                         <div className="flex gap-2">
-                            <input name="default_min_stock" type="number" defaultValue={initialSettings.default_min_stock} disabled={!isEditing} className="p-2 border rounded flex-1 disabled:bg-gray-100" />
-                            <span className="p-2 bg-gray-100 rounded text-gray-500">unidades</span>
+                            <Button type="button" onClick={() => setIsEditing(false)} variant="outline" className="text-gray-600">
+                                Cancelar
+                            </Button>
+                            <Button type="submit" disabled={loading} className="bg-green-600 hover:bg-green-700 text-white">
+                                {loading ? 'Guardando...' : '💾 Guardar Cambios'}
+                            </Button>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Se usará cuando un insumo no tenga una meta específica definida.</p>
-                    </div>
-                </CardContent>
-            </Card>
-        </form>
+                    )}
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Metas de Inventario</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="max-w-md">
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Stock Mínimo por Defecto</label>
+                            <div className="flex gap-2">
+                                <input name="default_min_stock" type="number" defaultValue={initialSettings.default_min_stock} disabled={!isEditing} className="p-2 border rounded flex-1 disabled:bg-gray-100" />
+                                <span className="p-2 bg-gray-100 rounded text-gray-500">unidades</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">Se usará cuando un insumo no tenga una meta específica definida.</p>
+                        </div>
+
+                        <div className="max-w-md">
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Factor de Stock Ideal (Buffer)</label>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-gray-500 font-bold">x</span>
+                                <input name="stock_buffer_multiplier" type="number" step="0.1" defaultValue={initialSettings.stock_buffer_multiplier || 2.0} disabled={!isEditing} className="p-2 border rounded flex-1 disabled:bg-gray-100" />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">Multiplicador del Mínimo para determinar la compra ideal. (Ej. 2.0 = Doble del mínimo)</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="mt-6">
+                    <CardHeader>
+                        <CardTitle>Frecuencia de Conteo ABC</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* Grupo B */}
+                        <div>
+                            <label className="block text-sm font-bold text-blue-800 mb-2">Grupo B (Bi-semanal)</label>
+                            <p className="text-xs text-gray-500 mb-2">Selecciona los días que deben aparecer estos insumos.</p>
+                            <DaySelector name="abc_days_b" initialDays={initialSettings.abc_days_b || [1, 4]} color="blue" disabled={!isEditing} />
+                        </div>
+
+                        {/* Grupo C */}
+                        <div>
+                            <label className="block text-sm font-bold text-green-800 mb-2">Grupo C (Semanal)</label>
+                            <p className="text-xs text-gray-500 mb-2">Selecciona los días que deben aparecer estos insumos.</p>
+                            <DaySelector name="abc_days_c" initialDays={initialSettings.abc_days_c || [0]} color="green" disabled={!isEditing} />
+                        </div>
+                    </CardContent>
+                </Card>
+            </form>
+
+            <div className="mt-8">
+                <CountingModeSettings supplies={supplies} />
+            </div>
+            <div className="mt-8">
+                <ClassificationSettings supplies={supplies} />
+            </div>
+        </>
     )
 }

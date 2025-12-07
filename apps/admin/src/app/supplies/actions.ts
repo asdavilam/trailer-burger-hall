@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { Supply, SupplyUnit, SupplyType } from '@trailer/shared'
+import { Supply, SupplyUnit, SupplyType, CountingMode } from '@trailer/shared'
 import { revalidatePath } from 'next/cache'
 
 export async function getSupplies() {
@@ -31,6 +31,7 @@ export async function createSupply(formData: FormData) {
   const category = formData.get('category') as string
   const yieldQuantity = parseFloat(formData.get('yield_quantity') as string) || 1
   const shrinkagePercent = parseFloat(formData.get('shrinkage_percent') as string) || 0
+  const countingMode = (formData.get('counting_mode') as CountingMode) || 'integer'
 
   let costPerUnit = 0
   let packageCost = 0
@@ -69,6 +70,8 @@ export async function createSupply(formData: FormData) {
     category: category || null,
     yield_quantity: yieldQuantity,
     shrinkage_percent: shrinkagePercent,
+    counting_mode: countingMode,
+    abc_classification: (formData.get('abc_classification') as any) || 'A',
     current_stock: 0 // Empieza en 0
   })
 
@@ -86,6 +89,8 @@ export async function updateSupply(id: string, formData: FormData) {
   const category = formData.get('category') as string
   const yieldQuantity = parseFloat(formData.get('yield_quantity') as string) || 1
   const shrinkagePercent = parseFloat(formData.get('shrinkage_percent') as string) || 0
+  const countingMode = (formData.get('counting_mode') as CountingMode) || 'integer'
+  const abcClassification = (formData.get('abc_classification') as any) || 'A'
 
   let costPerUnit = 0
   let packageCost = 0
@@ -138,7 +143,9 @@ export async function updateSupply(id: string, formData: FormData) {
       brand: brand,
       category: category || null,
       yield_quantity: yieldQuantity,
-      shrinkage_percent: shrinkagePercent
+      shrinkage_percent: shrinkagePercent,
+      counting_mode: countingMode,
+      abc_classification: abcClassification
     })
     .eq('id', id)
 
@@ -382,6 +389,57 @@ export async function confirmPriceValid(supplyId: string) {
     .eq('id', supplyId)
 
   if (error) return { error: error.message }
+
+  revalidatePath('/supplies')
+  return { success: true }
+}
+
+// 7. ACTUALIZACIÓN MASIVA DE MODO DE CONTEO
+export async function updateBulkCountingMode(ids: string[], mode: CountingMode) {
+  const { error } = await supabaseAdmin
+    .from('supplies')
+    .update({ counting_mode: mode })
+    .in('id', ids)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/supplies')
+  revalidatePath('/settings')
+  return { success: true }
+}
+
+// 8. ACTUALIZACIÓN MASIVA DE CLASIFICACIÓN ABC
+export async function updateBulkClassification(ids: string[], classification: 'A' | 'B' | 'C') {
+  const { error } = await supabaseAdmin
+    .from('supplies')
+    .update({ abc_classification: classification })
+    .in('id', ids)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/supplies')
+  revalidatePath('/settings')
+  return { success: true }
+}
+
+export async function updateSupplyIngredient(ingredientId: string, quantity: number) {
+  const { error } = await supabaseAdmin
+    .from('supply_ingredients')
+    .update({ quantity })
+    .eq('id', ingredientId)
+
+  if (error) return { error: error.message }
+
+  // Recalcular costo del padre
+  const { data } = await supabaseAdmin
+    .from('supply_ingredients')
+    .select('parent_supply_id')
+    .eq('id', ingredientId)
+    .single()
+
+  if (data?.parent_supply_id) {
+    await triggerCostRecalculation(data.parent_supply_id)
+  }
 
   revalidatePath('/supplies')
   return { success: true }

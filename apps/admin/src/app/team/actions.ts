@@ -68,7 +68,7 @@ export async function inviteUser(formData: FormData) {
     const getBaseUrl = () => {
       if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
       if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-      if (process.env.NODE_ENV === 'production') return 'https://portal.trailerburgerhall.com.mx'
+      if (process.env.NODE_ENV === 'production') return 'https://portal.trailerburger.mx'
       return 'http://localhost:3000'
     }
 
@@ -132,7 +132,7 @@ export async function resendInvite(email: string) {
     const getBaseUrl = () => {
       if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
       if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-      if (process.env.NODE_ENV === 'production') return 'https://portal.trailerburgerhall.com.mx'
+      if (process.env.NODE_ENV === 'production') return 'https://portal.trailerburger.mx'
       return 'http://localhost:3000'
     }
 
