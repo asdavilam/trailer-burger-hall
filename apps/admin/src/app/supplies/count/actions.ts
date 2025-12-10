@@ -7,6 +7,21 @@ import { revalidatePath } from 'next/cache'
 
 // 1. Obtener lo que me toca contar hoy (Esto sigue igual, lectura normal)
 // 1. Obtener lo que me toca contar hoy
+export async function getTodayDateHeader() {
+  const timeZone = 'America/Mexico_City'
+  const now = new Date()
+  const mexicoDateStr = now.toLocaleString('en-US', { timeZone })
+  const today = new Date(mexicoDateStr)
+
+  // Format: "Domingo, 7 de diciembre de 2025"
+  return today.toLocaleDateString('es-MX', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
 export async function getMyAssignments() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,7 +38,8 @@ export async function getMyAssignments() {
         current_stock,
         counting_mode,
         quantity_per_package,
-        abc_classification
+        abc_classification,
+        average_weight
       )
     `)
     .eq('user_id', user.id)
@@ -61,7 +77,11 @@ export async function getMyAssignments() {
   const abcDaysB = settings.abc_days_b || [1, 4] // Default: Lunes, Jueves
   const abcDaysC = settings.abc_days_c || [0]    // Default: Domingo
 
-  const today = new Date()
+  // Fix Timezone: Ensure we are working with Mexico City time
+  const timeZone = 'America/Mexico_City'
+  const now = new Date()
+  const mexicoDateStr = now.toLocaleString('en-US', { timeZone })
+  const today = new Date(mexicoDateStr)
   const dayOfWeek = today.getDay() // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
 
   const isDayForB = abcDaysB.includes(dayOfWeek)

@@ -55,13 +55,13 @@ export function InstallPWA() {
     return (
         <>
             <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={handleInstallClick}
-                className="gap-2 border-orange-200 text-orange-700 hover:bg-orange-50"
+                className="text-orange-500 hover:text-orange-700 hover:bg-orange-50"
+                title="Instalar Aplicación"
             >
-                <Download className="w-4 h-4" />
-                Instalar App
+                <Download className="w-5 h-5" />
             </Button>
 
             {/* Modal de Instrucciones iOS */}

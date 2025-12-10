@@ -18,7 +18,7 @@ export function AssignmentManager({ users, supplies, assignments }: any) {
     const names = supplies
       .filter((s: any) => ids.includes(s.id))
       .map((s: any) => s.name)
-    
+
     if (names.length === 0) return <span className="text-gray-400 italic">Nada asignado aún</span>
     if (names.length > 3) return <span>{names.slice(0, 3).join(', ')} <span className="text-gray-400">+{names.length - 3} más</span></span>
     return names.join(', ')
@@ -46,7 +46,7 @@ export function AssignmentManager({ users, supplies, assignments }: any) {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => setEditingUser(user)}
               className="w-full py-2 border-2 border-orange-100 text-orange-700 font-bold rounded-lg hover:bg-orange-50 hover:border-orange-200 transition"
             >
@@ -61,6 +61,8 @@ export function AssignmentManager({ users, supplies, assignments }: any) {
           user={editingUser}
           allSupplies={supplies}
           initialAssignedIds={getAssignedIds(editingUser.id)}
+          allAssignments={assignments}
+          users={users}
           onClose={() => setEditingUser(null)}
         />
       )}

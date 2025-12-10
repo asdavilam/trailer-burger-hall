@@ -37,6 +37,7 @@ export async function saveUserAssignments(userId: string, supplyIds: string[]) {
 
   if (supplyIds.length === 0) {
     revalidatePath('/supplies/assignments')
+    revalidatePath('/supplies/count')
     return { success: true }
   }
 
@@ -53,5 +54,6 @@ export async function saveUserAssignments(userId: string, supplyIds: string[]) {
   if (insertError) return { error: 'Error al guardar nuevas asignaciones' }
 
   revalidatePath('/supplies/assignments')
+  revalidatePath('/supplies/count')
   return { success: true }
 }

@@ -9,15 +9,21 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
+    /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - login (login page)
-     * - manifest.json (PWA manifest)
+     * - forgot-password (public route)
+     * - manifest.json (legacy manifest)
+     * - site.webmanifest (new manifest)
      * - icons (PWA icons)
+     * - .*\\.png$ (PNG images)
+     * - .*\\.jpg$ (JPG images)
+     * - .*\\.svg$ (SVG images)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|login|forgot-password|manifest.json|icons).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|login|forgot-password|manifest.json|site.webmanifest|icons|.*\\.png$|.*\\.jpg$|.*\\.svg$).*)',
   ],
 }

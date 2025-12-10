@@ -31,6 +31,7 @@ export async function createSupply(formData: FormData) {
   const category = formData.get('category') as string
   const yieldQuantity = parseFloat(formData.get('yield_quantity') as string) || 1
   const shrinkagePercent = parseFloat(formData.get('shrinkage_percent') as string) || 0
+  const averageWeight = parseFloat(formData.get('average_weight') as string) || null
   const countingMode = (formData.get('counting_mode') as CountingMode) || 'integer'
 
   let costPerUnit = 0
@@ -70,6 +71,7 @@ export async function createSupply(formData: FormData) {
     category: category || null,
     yield_quantity: yieldQuantity,
     shrinkage_percent: shrinkagePercent,
+    average_weight: averageWeight,
     counting_mode: countingMode,
     abc_classification: (formData.get('abc_classification') as any) || 'A',
     current_stock: 0 // Empieza en 0
@@ -89,6 +91,7 @@ export async function updateSupply(id: string, formData: FormData) {
   const category = formData.get('category') as string
   const yieldQuantity = parseFloat(formData.get('yield_quantity') as string) || 1
   const shrinkagePercent = parseFloat(formData.get('shrinkage_percent') as string) || 0
+  const averageWeight = parseFloat(formData.get('average_weight') as string) || null
   const countingMode = (formData.get('counting_mode') as CountingMode) || 'integer'
   const abcClassification = (formData.get('abc_classification') as any) || 'A'
 
@@ -144,6 +147,7 @@ export async function updateSupply(id: string, formData: FormData) {
       category: category || null,
       yield_quantity: yieldQuantity,
       shrinkage_percent: shrinkagePercent,
+      average_weight: averageWeight,
       counting_mode: countingMode,
       abc_classification: abcClassification
     })

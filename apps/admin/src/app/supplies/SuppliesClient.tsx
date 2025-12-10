@@ -7,7 +7,7 @@ import { deleteSupply, confirmPriceValid } from './actions'
 import { ResponsiveTable } from '@/components/ui/ResponsiveTable'
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { Badge } from '@/components/ui/Badge'
+import { Toast, ToastType } from '@/components/ui/Toast'
 
 type Props = {
     supplies: Supply[]
@@ -24,6 +24,17 @@ export function SuppliesClient({ supplies }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<Supply | undefined>(undefined)
     const [searchTerm, setSearchTerm] = useState('')
+
+    // Toast State
+    const [toast, setToast] = useState<{ message: string, type: ToastType, isVisible: boolean }>({
+        message: '',
+        type: 'info',
+        isVisible: false
+    })
+
+    const showToast = (message: string, type: ToastType = 'info') => {
+        setToast({ message, type, isVisible: true })
+    }
 
     // Filtrar supplies basado en el término de búsqueda
     const filteredSupplies = useMemo(() => {
@@ -54,7 +65,9 @@ export function SuppliesClient({ supplies }: Props) {
 
         const res = await deleteSupply(id)
         if (res?.error) {
-            alert('❌ Error: ' + res.error)
+            showToast('❌ Error: ' + res.error, 'error')
+        } else {
+            showToast('Insumo eliminado correctamente', 'success')
         }
     }
 
@@ -64,7 +77,9 @@ export function SuppliesClient({ supplies }: Props) {
 
         const res = await confirmPriceValid(id)
         if (res?.error) {
-            alert('❌ Error: ' + res.error)
+            showToast('❌ Error: ' + res.error, 'error')
+        } else {
+            showToast('Precio confirmado como vigente', 'success')
         }
     }
 
@@ -74,9 +89,9 @@ export function SuppliesClient({ supplies }: Props) {
             cell: (item: Supply) => (
                 <div>
                     <div className="text-sm font-bold text-[var(--color-secondary)]">{item.name}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-[var(--color-secondary)]/60">
                         {item.brand && <span className="font-mono">{item.brand}</span>}
-                        {item.category && <span className="ml-2 text-gray-500">• {item.category}</span>}
+                        {item.category && <span className="ml-2 opacity-70">• {item.category}</span>}
                     </div>
                 </div>
             )
@@ -86,11 +101,11 @@ export function SuppliesClient({ supplies }: Props) {
             cell: (item: Supply) => (
                 <div className="flex items-center gap-2">
                     <div>
-                        <div className="text-sm text-gray-700 font-bold">
-                            ${item.cost_per_unit.toFixed(2)} <span className="text-gray-400 text-xs font-normal">/ {item.unit}</span>
+                        <div className="text-sm text-[var(--color-secondary)] font-bold">
+                            ${item.cost_per_unit.toFixed(2)} <span className="text-[var(--color-secondary)]/50 text-xs font-normal">/ {item.unit}</span>
                         </div>
                         {item.package_cost && item.quantity_per_package && (
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-[var(--color-secondary)]/50">
                                 {item.purchase_unit && <span>{item.purchase_unit}: </span>}
                                 ${item.package_cost} / {item.quantity_per_package} {item.unit}
                             </div>
@@ -99,7 +114,7 @@ export function SuppliesClient({ supplies }: Props) {
                     {isPriceOutdated(item.last_price_check) && (
                         <button
                             onClick={() => handleConfirmPrice(item.id, item.name)}
-                            className="text-yellow-600 hover:text-yellow-700 transition-colors"
+                            className="text-[var(--color-warning)] hover:text-[var(--color-primary)] transition-colors animate-pulse"
                             title="Precio sin verificar en 30+ días. Click para confirmar."
                         >
                             ⚠️
@@ -115,7 +130,7 @@ export function SuppliesClient({ supplies }: Props) {
         {
             header: 'Proveedor',
             accessorKey: 'provider' as keyof Supply,
-            cell: (item: Supply) => <span className="text-sm text-gray-500">{item.provider || '-'}</span>
+            cell: (item: Supply) => <span className="text-sm text-[var(--color-secondary)]/60">{item.provider || '-'}</span>
         },
         {
             header: 'Acciones',
@@ -125,7 +140,7 @@ export function SuppliesClient({ supplies }: Props) {
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
                         ✏️ Editar
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="text-red-600 hover:bg-red-50 hover:text-red-700">
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="text-[var(--color-error)] hover:bg-[var(--color-error)]/10 hover:text-[var(--color-error)]">
                         🗑️ Borrar
                     </Button>
                 </div>
@@ -138,7 +153,7 @@ export function SuppliesClient({ supplies }: Props) {
             <div className="flex justify-between items-start">
                 <div>
                     <h3 className="font-bold text-[var(--color-secondary)]">{item.name}</h3>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-[var(--color-secondary)]/60">
                         {item.brand && <span>{item.brand}</span>}
                         {item.category && <span className="ml-2">• {item.category}</span>}
                     </p>
@@ -148,13 +163,13 @@ export function SuppliesClient({ supplies }: Props) {
 
             <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                    <span className="text-gray-500 block text-xs">Costo</span>
+                    <span className="text-[var(--color-secondary)]/50 block text-xs font-bold uppercase">Costo</span>
                     <div className="flex items-center gap-1">
-                        <span className="font-medium">${item.cost_per_unit.toFixed(2)} / {item.unit}</span>
+                        <span className="font-medium text-[var(--color-secondary)]">${item.cost_per_unit.toFixed(2)} / {item.unit}</span>
                         {isPriceOutdated(item.last_price_check) && (
                             <button
                                 onClick={() => handleConfirmPrice(item.id, item.name)}
-                                className="text-yellow-600"
+                                className="text-[var(--color-warning)]"
                                 title="Precio desactualizado"
                             >
                                 ⚠️
@@ -163,12 +178,12 @@ export function SuppliesClient({ supplies }: Props) {
                     </div>
                 </div>
                 <div>
-                    <span className="text-gray-500 block text-xs">Proveedor</span>
-                    <span className="font-medium">{item.provider || '-'}</span>
+                    <span className="text-[var(--color-secondary)]/50 block text-xs font-bold uppercase">Proveedor</span>
+                    <span className="font-medium text-[var(--color-secondary)]">{item.provider || '-'}</span>
                 </div>
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-gray-100 mt-2">
+            <div className="flex gap-2 pt-2 border-t border-[#e5e0d4] mt-2">
                 <Button variant="outline" size="sm" onClick={() => handleEdit(item)} className="flex-1">
                     ✏️ Editar
                 </Button>
@@ -182,25 +197,25 @@ export function SuppliesClient({ supplies }: Props) {
     return (
         <div className="max-w-6xl mx-auto p-4 sm:p-6">
             <PageHeader
-                title="Inventario de Insumos 📦"
+                title="Inventario de Insumos"
                 description="Gestiona tus materias primas y costos."
             >
-                <Button onClick={handleCreate}>
-                    <span>+</span> Nuevo Insumo
+                <Button onClick={handleCreate} variant="primary">
+                    Nuevo Insumo
                 </Button>
             </PageHeader>
 
             {/* Barra de Búsqueda */}
-            <div className="mb-4">
+            <div className="mb-6">
                 <input
                     type="text"
                     placeholder="🔍 Buscar por nombre, proveedor, marca o categoría..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                    className="w-full p-4 border border-[#e5e0d4] rounded-xl shadow-sm focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] transition-all bg-white text-[var(--color-secondary)] placeholder:text-[var(--color-secondary)]/30 font-medium"
                 />
                 {searchTerm && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-sm text-[var(--color-secondary)]/60 mt-2 px-1">
                         Mostrando {filteredSupplies.length} de {supplies.length} insumos
                     </p>
                 )}
@@ -220,6 +235,13 @@ export function SuppliesClient({ supplies }: Props) {
                     onClose={() => setIsModalOpen(false)}
                 />
             )}
+
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.isVisible}
+                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+            />
         </div>
     )
 }

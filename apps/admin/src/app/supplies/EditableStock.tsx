@@ -81,9 +81,9 @@ export function EditableStock({ supply }: Props) {
                     onKeyDown={handleKeyDown}
                     autoFocus
                     disabled={isSaving}
-                    className="w-20 p-1 border-2 border-blue-500 rounded text-sm"
+                    className="w-20 p-1 border-2 border-[var(--color-primary)] rounded text-sm outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 bg-white text-[var(--color-secondary)] font-bold"
                 />
-                <span className="text-xs text-gray-500">{supply.unit}</span>
+                <span className="text-xs font-bold text-[var(--color-secondary)]/70">{supply.unit}</span>
             </div>
         )
     }
@@ -94,7 +94,7 @@ export function EditableStock({ supply }: Props) {
                 setIsEditing(true)
                 setNewStock(supply.current_stock.toString())
             }}
-            className={`cursor-pointer transition-all ${showSuccess ? 'ring-2 ring-green-500 rounded' : ''}`}
+            className={`cursor-pointer transition-all ${showSuccess ? 'ring-2 ring-[var(--color-accent)] rounded scale-105' : 'hover:opacity-80'}`}
             title="Click para editar stock"
         >
             <StockBadge supply={{ ...supply, current_stock: parseFloat(newStock) || 0 }} />

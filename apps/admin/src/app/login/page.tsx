@@ -16,13 +16,10 @@ export default async function AdminLoginPage({
         {/* Header with Logo */}
         <div className="bg-[#2A1512] p-8 flex flex-col items-center justify-center border-b-4 border-[#C08A3E]">
           <div className="relative w-32 h-32 mb-4">
-            <Image
-              src="/icons/LOGO_TBH.png"
+            <img
+              src="/logo_tbh.png"
               alt="Trailer Burger Hall Logo"
-              fill
-              sizes="128px"
-              className="object-contain"
-              priority
+              className="object-contain w-full h-full"
             />
           </div>
           <h1 className="text-[#C08A3E] font-display text-2xl font-bold tracking-wider uppercase">

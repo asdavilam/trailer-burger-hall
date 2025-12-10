@@ -9,7 +9,7 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === 'development',
   fallbacks: {
     document: '/offline.html',
-    image: '/icons/icon-192.png',
+    image: '/web-app-manifest-192x192.png',
     audio: '/offline.html',
     video: '/offline.html',
     font: '/offline.html',
@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/manifest.json',
+        source: '/site.webmanifest',
         headers: [
           { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
           { key: 'Pragma', value: 'no-cache' },

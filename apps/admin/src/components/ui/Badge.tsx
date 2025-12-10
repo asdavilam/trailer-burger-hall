@@ -6,12 +6,12 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Badge({ className = "", variant = "default", ...props }: BadgeProps) {
     const variants = new Map([
-        ["default", "border-transparent bg-[var(--color-primary)] text-white hover:opacity-80"],
-        ["secondary", "border-transparent bg-[var(--color-secondary)] text-white hover:opacity-80"],
-        ["success", "border-transparent bg-[var(--color-success)] text-white shadow-sm"],
-        ["warning", "border-transparent bg-[var(--color-warning)] text-white shadow-sm"],
-        ["error", "border-transparent bg-[var(--color-error)] text-white shadow-sm"],
-        ["outline", "text-[var(--color-secondary)] border-[var(--color-secondary)]"],
+        ["default", "border-transparent bg-[var(--color-primary)] text-white hover:opacity-90"],
+        ["secondary", "border-transparent bg-[var(--color-secondary)] text-white hover:opacity-90"],
+        ["success", "border-transparent bg-[var(--color-accent)] text-white shadow-sm"], // Sage
+        ["warning", "border-transparent bg-[var(--color-primary)] text-white shadow-sm"], // Bronze
+        ["error", "border-transparent bg-[var(--color-error)] text-white shadow-sm"], // Wine
+        ["outline", "text-[var(--color-secondary)] border-[var(--color-secondary)] bg-transparent"],
     ])
 
     const variantClass = variants.get(variant) || variants.get("default")
