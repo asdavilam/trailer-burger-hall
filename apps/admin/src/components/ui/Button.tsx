@@ -16,11 +16,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         const baseStyles = "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
 
         const variants = new Map([
-            ["primary", "bg-[var(--color-primary)] text-white hover:opacity-90 border border-transparent shadow-sm"],
-            ["secondary", "bg-[var(--color-secondary)] text-white hover:opacity-90 border border-transparent shadow-sm"],
-            ["outline", "border border-[var(--color-primary)] bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white"],
-            ["ghost", "hover:bg-gray-100 text-gray-700"],
-            ["danger", "bg-[var(--color-error)] text-white hover:opacity-90 border border-transparent shadow-sm"],
+            ["primary", "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)]/90 border border-transparent shadow-sm"],
+            ["secondary", "bg-[var(--color-secondary)] text-white hover:bg-[var(--color-secondary)]/90 border border-transparent shadow-sm"],
+            ["outline", "border-2 border-[var(--color-primary)] bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white"],
+            ["ghost", "hover:bg-[var(--color-background)] text-[var(--color-secondary)] hover:text-[var(--color-primary)] transition-all"],
+            ["danger", "bg-[var(--color-error)] text-white hover:bg-[var(--color-error)]/90 border border-transparent shadow-sm"],
         ])
 
         const sizes = new Map([

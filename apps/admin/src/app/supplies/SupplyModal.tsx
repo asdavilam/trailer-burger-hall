@@ -218,6 +218,27 @@ export function SupplyModal({ supply, onClose }: Props) {
               Alerta cuando queden menos de <strong>{minStock} {supplyUnitLabel}</strong>
             </p>
           </div>
+
+          <div className="bg-purple-50 p-3 rounded border border-purple-100">
+            <label className="block text-xs font-bold text-purple-800 uppercase mb-1">
+              ⚖️ Smart Conversion (Opcional)
+            </label>
+            <label className="block text-[10px] text-purple-600 mb-2">
+              Si vendes por pieza pero cuentas en gramos, define cuánto pesa 1 unidad.
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                name="average_weight"
+                type="number"
+                step="0.01"
+                min="0"
+                defaultValue={supply?.average_weight || ''}
+                placeholder="Ej. 20 (gramos)"
+                className="w-full p-2 border rounded border-purple-200"
+              />
+              <span className="text-xs font-bold text-purple-700">g/pz</span>
+            </div>
+          </div>
         </div>
 
         <div className="md:col-span-2">

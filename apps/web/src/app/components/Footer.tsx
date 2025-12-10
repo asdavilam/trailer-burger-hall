@@ -70,11 +70,11 @@ export default async function Footer() {
           <div className="flex items-center gap-2">
             {/* si quieres seguir mostrando el PNG del logo */}
             <img
-              src="/icons/LOGO_TBH.png"
+              src="/logo_tbh.png"
               alt={s.restaurant_name ?? 'Trailer Burger Hall'}
-              width={200}
-              height={200}
-              className="rounded-full"
+              width={100}
+              height={100}
+              className="object-contain"
             />
           </div>
           <p className="text-sm text-[#F6F1E7]/80">
@@ -90,9 +90,9 @@ export default async function Footer() {
                 href={social.instagram}
                 src="/icons/instagram.svg"
                 label="Instagram"
-                // color y size opcionales:
-                // color="#F6F1E7"
-                // size={22}
+              // color y size opcionales:
+              // color="#F6F1E7"
+              // size={22}
               />
             )}
             {social.facebook && (

@@ -36,24 +36,24 @@ export function ResponsiveTable<T>({
         <>
             {/* Desktop View */}
             <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-[#e5e0d4]">
+                    <thead className="bg-[#f0ede6]">
                         <tr>
                             {columns.map((col, index) => (
                                 <th
                                     key={index}
-                                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${col.className || ''}`}
+                                    className={`px-6 py-3 text-left text-xs font-bold text-[var(--color-secondary)] uppercase tracking-wider ${col.className || ''}`}
                                 >
                                     {col.header}
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-[#e5e0d4]">
                         {data.map((item) => (
-                            <tr key={keyExtractor(item)} className="hover:bg-gray-50 transition">
+                            <tr key={keyExtractor(item)} className="hover:bg-[#f6f1e7] transition-colors">
                                 {columns.map((col, index) => (
-                                    <td key={index} className={`px-6 py-4 whitespace-nowrap text-sm text-gray-700 ${col.className || ''}`}>
+                                    <td key={index} className={`px-6 py-4 whitespace-nowrap text-sm text-[var(--color-secondary)] ${col.className || ''}`}>
                                         {col.cell
                                             ? col.cell(item)
                                             : col.accessorKey

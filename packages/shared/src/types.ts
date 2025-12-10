@@ -79,6 +79,7 @@ export type Supply = {
   yield_quantity?: number; // Rendimiento de la receta (default 1)
   shrinkage_percent?: number; // Porcentaje de merma (0-100)
   abc_classification?: 'A' | 'B' | 'C'; // Clasificación ABC
+  average_weight?: number | null; // Peso promedio por pieza (para Smart Conversion)
   created_at?: string;
 };
 

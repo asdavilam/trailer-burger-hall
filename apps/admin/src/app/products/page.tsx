@@ -24,7 +24,7 @@ export default async function ProductsV2Page() {
       >
         <Button asChild>
           <Link href="/products/new">
-            + Nuevo Producto
+            Nuevo Producto
           </Link>
         </Button>
       </PageHeader>

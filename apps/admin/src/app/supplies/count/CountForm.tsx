@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { submitDailyCount } from './actions'
+import { Toast, ToastType } from '@/components/ui/Toast'
 
 export function CountForm({ items }: { items: any[] }) {
   // Estado local para guardar los números que escribe el usuario (solo si cambia)
@@ -14,6 +15,17 @@ export function CountForm({ items }: { items: any[] }) {
   const [isDone, setIsDone] = useState(false)
   const [validationError, setValidationError] = useState<{ message: string, items: string[] } | null>(null)
 
+  // Toast State
+  const [toast, setToast] = useState<{ message: string, type: ToastType, isVisible: boolean }>({
+    message: '',
+    type: 'info',
+    isVisible: false
+  })
+
+  const showToast = (message: string, type: ToastType = 'info') => {
+    setToast({ message, type, isVisible: true })
+  }
+
   // Inicializar unidades por defecto
   if (Object.keys(units).length === 0 && items.length > 0) {
     const initialUnits: Record<string, string> = {}
@@ -25,7 +37,7 @@ export function CountForm({ items }: { items: any[] }) {
 
   // Calcular días sin contar para cada item
   const getStaleInfo = (lastCountDate: string | null) => {
-    if (!lastCountDate) return { isStale: true, daysSince: 999, label: 'Nunca contado' }
+    if (!lastCountDate) return { isStale: true, daysSince: 999, label: 'Nunca' }
     const today = new Date()
     const lastDate = new Date(lastCountDate + 'T12:00:00') // Normalizar
     const diffTime = today.getTime() - lastDate.getTime()
@@ -33,7 +45,7 @@ export function CountForm({ items }: { items: any[] }) {
     return {
       isStale: daysSince >= 2,
       daysSince,
-      label: daysSince === 0 ? 'Hoy' : daysSince === 1 ? 'Ayer' : `Hace ${daysSince} días`
+      label: daysSince === 0 ? 'Hoy' : daysSince === 1 ? 'Ayer' : `${daysSince} días`
     }
   }
 
@@ -82,7 +94,7 @@ export function CountForm({ items }: { items: any[] }) {
     // Validar: items pendientes (2+ días) deben tener valor
     const missingStale = staleItems.filter(item => counts[item.id] === null || counts[item.id] === undefined)
     if (missingStale.length > 0) {
-      alert(`⚠️ Debes contar los siguientes insumos (llevan 2+ días sin actualizar):\n\n${missingStale.map(i => `• ${i.name}`).join('\n')}`)
+      showToast(`Faltan ${missingStale.length} insumos obligatorios por contar.`, 'error')
       return
     }
 
@@ -97,7 +109,31 @@ export function CountForm({ items }: { items: any[] }) {
 
       if (newValue !== null && newValue !== undefined) {
         // Usuario ingresó un nuevo valor
-        finalCounts[item.id] = convertToStorageUnit(newValue, selectedUnit, item.unit)
+        if (selectedUnit === 'smart_weight') {
+          // Smart Logic
+          if (item.average_weight && item.average_weight > 0) {
+            if (item.unit === 'pz') {
+              // INPUT: Grams -> STORAGE: Pieces
+              // newValue = Grams
+              finalCounts[item.id] = Math.floor(newValue / item.average_weight)
+            } else {
+              // INPUT: Pieces -> STORAGE: Weight (Kg/Lt/g/ml)
+              // newValue = Pieces
+              const totalGrams = newValue * item.average_weight
+
+              if (item.unit === 'kg' || item.unit === 'lt') {
+                finalCounts[item.id] = totalGrams / 1000
+              } else {
+                finalCounts[item.id] = totalGrams
+              }
+            }
+          } else {
+            // Fallback (shouldn't happen)
+            finalCounts[item.id] = newValue
+          }
+        } else {
+          finalCounts[item.id] = convertToStorageUnit(newValue, selectedUnit, item.unit)
+        }
       } else {
         // Fallback: mantener el stock actual
         finalCounts[item.id] = item.current_stock
@@ -113,29 +149,31 @@ export function CountForm({ items }: { items: any[] }) {
           message: result.error,
           items: result.discrepancies
         })
+        showToast('Hay diferencias importantes. Revisa los items marcados.', 'error')
         setIsSubmitting(false)
         return
       }
-      alert(result.error)
+      showToast(result.error, 'error')
       setIsSubmitting(false)
       return
     }
 
     setIsSubmitting(false)
     setIsDone(true)
+    showToast('Inventario guardado correctamente', 'success')
   }
 
   if (isDone) {
     return (
-      <div className="p-8 text-center bg-green-50 border border-green-200 rounded-xl">
-        <div className="text-4xl mb-4">✅</div>
-        <h2 className="text-2xl font-bold text-green-800">¡Cierre Guardado!</h2>
-        <p className="text-green-600 mb-6">El inventario se ha actualizado correctamente.</p>
+      <div className="p-12 text-center bg-[#f6f1e7] rounded-xl border border-[#e5e0d4] shadow-sm animate-in fade-in duration-500">
+        <div className="text-6xl mb-6">✨</div>
+        <h2 className="text-3xl font-display font-bold text-[#3b1f1a] mb-2">¡Cierre Exitoso!</h2>
+        <p className="text-[#3b1f1a]/70 mb-8 font-sans">El inventario se ha actualizado correctamente.</p>
         <button
           onClick={() => window.location.reload()}
-          className="bg-green-700 text-white px-6 py-2 rounded-lg font-bold"
+          className="bg-[#c08a3e] text-white px-8 py-3 rounded-lg font-bold font-sans hover:bg-[#a67633] transition-colors shadow-lg shadow-[#c08a3e]/20"
         >
-          Nuevo Conteo
+          Iniciar Nuevo Conteo
         </button>
       </div>
     )
@@ -143,35 +181,41 @@ export function CountForm({ items }: { items: any[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed">
-        <p>🤷‍♂️ No tienes insumos asignados para contar.</p>
-        <p className="text-xs mt-2">Pídele al administrador que te asigne responsabilidades.</p>
+      <div className="p-12 text-center text-[#3b1f1a]/50 bg-[#f6f1e7] rounded-xl border border-dashed border-[#e5e0d4]">
+        <p className="font-display text-lg">No hay insumos asignados</p>
+        <p className="text-xs mt-2 font-sans">Solicita asignaciones al administrador.</p>
       </div>
     )
   }
 
   return (
-    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-      {/* Alerta de pendientes */}
-      {staleItems.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-amber-800 font-bold">
-            <span className="text-xl">⚠️</span>
-            <span>{staleItems.length} insumo(s) llevan 2+ días sin contar</span>
+    <>
+      <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6 pb-20">
+        {/* Alerta de pendientes */}
+        {staleItems.length > 0 && (
+          <div className="bg-[#fff8f0] border-l-4 border-[#c08a3e] rounded-r-lg p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="text-[#c08a3e] font-bold text-xl">⚠️</span>
+              <div>
+                <p className="text-[#3b1f1a] font-bold">Pendientes de Conteo</p>
+                <p className="text-[#3b1f1a]/70 text-sm">{staleItems.length} insumo(s) requieren atención hoy.</p>
+              </div>
+            </div>
           </div>
-          <p className="text-amber-700 text-sm mt-1">Estos están marcados en rojo y son obligatorios.</p>
-        </div>
-      )}
+        )}
 
-      {/* Alerta de Validación */}
-      {validationError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 sticky top-4 z-10 shadow-lg animate-pulse">
-          <div className="flex items-start gap-3">
-            <span className="text-3xl">🛑</span>
-            <div>
-              <h3 className="text-lg font-bold text-red-800">Diferencias Detectadas</h3>
-              <p className="text-red-700 mb-4">{validationError.message}</p>
-              <div className="flex gap-3">
+        {/* Alerta de Validación */}
+        {validationError && (
+          <div className="bg-[#fff5f5] border border-[#6a1e1a]/20 rounded-xl p-6 sticky top-4 z-20 shadow-xl animate-pulse">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🧐</span>
+                <div>
+                  <h3 className="text-lg font-bold text-[#6a1e1a] font-display">Verificación Requerida</h3>
+                  <p className="text-[#6a1e1a]/80 text-sm">{validationError.message}</p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -179,216 +223,210 @@ export function CountForm({ items }: { items: any[] }) {
                     element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                     element?.focus()
                   }}
-                  className="bg-white text-red-700 px-4 py-2 rounded border border-red-200 font-bold hover:bg-red-50"
+                  className="flex-1 bg-white text-[#6a1e1a] px-4 py-3 rounded-lg border border-[#6a1e1a]/20 font-bold text-sm hover:bg-[#fff0f0] transition-colors"
                 >
-                  Revisar Conteo
+                  Corregir
                 </button>
                 <button
                   type="button"
                   onClick={(e) => handleSubmit(e as any, true)}
-                  className="bg-red-700 text-white px-4 py-2 rounded font-bold hover:bg-red-800"
+                  className="flex-1 bg-[#6a1e1a] text-white px-4 py-3 rounded-lg font-bold text-sm hover:bg-[#501614] transition-colors shadow-lg shadow-[#6a1e1a]/20"
                 >
-                  Confirmar Diferencia (Forzar)
+                  Confirmar (Forzar)
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="bg-white rounded-xl shadow-sm border divide-y divide-gray-100">
-        {items.map((item) => {
-          const unitOptions = getUnitOptions(item.unit)
-          const countingMode = item.counting_mode || 'integer'
-          const capacity = item.quantity_per_package || 1
-          const staleInfo = getStaleInfo(item.last_count_date)
-          const isRequired = staleInfo.isStale
-          const hasValue = counts[item.id] !== null && counts[item.id] !== undefined
-          const isDiscrepant = validationError?.items.includes(item.id)
+        <div className="space-y-4">
+          {items.map((item) => {
+            const unitOptions = getUnitOptions(item.unit)
+            const countingMode = item.counting_mode || 'integer'
+            const capacity = item.quantity_per_package || 1
+            const staleInfo = getStaleInfo(item.last_count_date)
+            const isRequired = staleInfo.isStale
+            const hasValue = counts[item.id] !== null && counts[item.id] !== undefined
+            const isDiscrepant = validationError?.items.includes(item.id)
+            const isSmartMode = units[item.id] === 'smart_weight'
 
-          // Logic for Fraction/Fuzzy calculation
-          const handleQuickSet = (percentage: number) => {
-            const calculatedValue = percentage * capacity
-            handleInputChange(item.id, calculatedValue.toString())
-          }
+            const handleQuickSet = (percentage: number) => {
+              const calculatedValue = percentage * capacity
+              handleInputChange(item.id, calculatedValue.toString())
+            }
 
-          return (
-            <div
-              key={item.id}
-              id={item.id}
-              className={`p-4 flex flex-col gap-3 transition-colors duration-300 ${isDiscrepant ? 'bg-red-100 border-l-4 border-red-500' : isRequired && !hasValue ? 'bg-red-50' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                    {item.name}
-                    {isRequired && <span className="text-red-500 text-sm">*</span>}
-                    {isDiscrepant && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-bounce">Revisar</span>}
-                  </div>
-                  <div className="text-xs text-gray-400 flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                    <span className={`${staleInfo.isStale ? 'text-red-500 font-bold' : 'text-green-600'}`}>
-                      📅 {staleInfo.label}
-                    </span>
-                    {countingMode !== 'integer' && (
-                      <span className="text-blue-500 font-bold">
-                        ({countingMode === 'fraction' ? 'Fracción' : 'Ojímetro'})
-                      </span>
+            return (
+              <div
+                key={item.id}
+                id={item.id}
+                className={`
+                  relative p-5 rounded-xl border transition-all duration-300
+                  ${isDiscrepant
+                    ? 'bg-[#fff5f5] border-[#6a1e1a] shadow-[0_0_15px_rgba(106,30,26,0.15)] z-10'
+                    : 'bg-white border-transparent shadow-sm hover:shadow-md'
+                  }
+                `}
+              >
+                <div className="flex flex-col gap-4">
+                  {/* Header del Item */}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className={`font-display font-bold text-lg leading-tight ${isDiscrepant ? 'text-[#6a1e1a]' : 'text-[#3b1f1a]'}`}>
+                        {item.name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs font-bold text-[#c08a3e] bg-[#f6f1e7] px-2 py-0.5 rounded-md uppercase tracking-wider">
+                          {item.unit}
+                        </span>
+                        {/* Indicador de última vez */}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${staleInfo.isStale ? 'bg-[#fff0f0] text-[#6a1e1a]' : 'bg-[#f0fdf4] text-[#15803d]'}`}>
+                          {staleInfo.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Toggle Smart Conversion (Elegante) */}
+                    {item.average_weight && item.average_weight > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newMode = isSmartMode ? item.unit : 'smart_weight'
+                          handleUnitChange(item.id, newMode)
+                          handleInputChange(item.id, '')
+                        }}
+                        className={`
+                          flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all
+                          ${isSmartMode
+                            ? 'bg-[#6b8e62] text-white shadow-md shadow-[#6b8e62]/30'
+                            : 'bg-[#f6f1e7] text-[#3b1f1a]/60 hover:bg-[#ebe6da]'
+                          }
+                        `}
+                      >
+                        {isSmartMode ? '✨ Smart On' : '⚖️ Smart Off'}
+                      </button>
                     )}
                   </div>
-                </div>
 
-                <div className="flex flex-col items-end gap-1">
-                  {/* Stock actual OCULTO (Blind Count) */}
-                  {/* <div className="text-xs text-gray-500 flex items-center gap-1">
-                    <span>Actual:</span>
-                    <span className="font-bold bg-gray-100 px-2 py-0.5 rounded">{item.current_stock} {item.unit}</span>
-                  </div> */}
-
-                  {/* Input nuevo valor */}
-                  <div className="flex items-center border rounded-lg overflow-hidden h-10 bg-white">
-                    <input
-                      type="number"
-                      step="0.001"
-                      min="0"
-                      placeholder="?" // Blind count placeholder
-                      value={counts[item.id] !== null && counts[item.id] !== undefined ? String(counts[item.id]) : ''}
-                      className={`w-24 p-2 text-right text-lg font-bold outline-none border-r h-full ${isRequired && !hasValue ? 'bg-red-50' : 'text-gray-900'}`}
-                      onChange={(e) => handleInputChange(item.id, e.target.value)}
-                    />
-                    <select
-                      value={units[item.id] || item.unit}
-                      onChange={(e) => handleUnitChange(item.id, e.target.value)}
-                      className="bg-gray-50 text-xs font-bold text-gray-600 py-2 pl-1 pr-0.5 outline-none border-none cursor-pointer hover:bg-gray-100 h-full"
+                  {/* Área de Input Principal */}
+                  <div className="flex items-stretch gap-3">
+                    <div
+                      className={`
+                        flex-1 flex items-center bg-[#fcfbf9] border rounded-xl overflow-hidden transition-all focus-within:ring-2 focus-within:ring-[#c08a3e] focus-within:border-[#c08a3e]
+                        ${isDiscrepant ? 'border-[#6a1e1a]' : isRequired && !hasValue ? 'border-[#c08a3e]/50' : 'border-[#e5e0d4]'}
+                      `}
                     >
-                      {unitOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+                      <input
+                        type="number"
+                        step={isSmartMode ? '1' : '0.001'}
+                        min="0"
+                        placeholder={isSmartMode ? (item.unit === 'pz' ? "Gramos" : "Piezas") : "0"}
+                        value={counts[item.id] !== null && counts[item.id] !== undefined ? String(counts[item.id]) : ''}
+                        onChange={(e) => handleInputChange(item.id, e.target.value)}
+                        className="flex-1 h-14 px-4 text-2xl font-display font-bold text-[#3b1f1a] bg-transparent outline-none placeholder:text-gray-200"
+                      />
+
+                      {/* Unidad o Selector */}
+                      <div className="bg-[#f6f1e7] h-full flex items-center px-3 border-l border-[#e5e0d4]">
+                        {isSmartMode ? (
+                          <div className="flex flex-col items-end justify-center min-w-[60px]">
+                            <span className="text-[10px] text-[#3b1f1a]/50 font-bold uppercase">Eq. a</span>
+                            <span className="text-sm font-bold text-[#6b8e62] leading-none">
+                              {counts[item.id] ? (
+                                item.unit === 'pz'
+                                  ? `~${Math.floor(counts[item.id]! / item.average_weight)}`
+                                  : `~${((counts[item.id]! * item.average_weight) / (item.unit === 'kg' || item.unit === 'lt' ? 1000 : 1)).toFixed(2)}`
+                              ) : '-'}
+                            </span>
+                            <span className="text-[9px] text-[#3b1f1a]/50 uppercase">{item.unit === 'pz' ? 'pzas' : item.unit}</span>
+                          </div>
+                        ) : (
+                          <select
+                            value={units[item.id] || item.unit}
+                            onChange={(e) => handleUnitChange(item.id, e.target.value)}
+                            className="bg-transparent text-xs font-bold text-[#3b1f1a] outline-none cursor-pointer py-2 pr-1"
+                          >
+                            {unitOptions.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Controles Auxiliares (Fracción / Fuzzy) */}
+                  {!isSmartMode && countingMode === 'fraction' && (
+                    <div className="flex gap-2 animate-in slide-in-from-top-1 fade-in">
+                      {[0.25, 0.5, 0.75].map((frac) => (
+                        <button
+                          key={frac}
+                          type="button"
+                          onClick={() => {
+                            const currentValue = counts[item.id] ?? 0
+                            const currentBase = Math.floor(currentValue / capacity) * capacity
+                            handleInputChange(item.id, (currentBase + frac * capacity).toString())
+                          }}
+                          className="flex-1 py-2 bg-[#f6f1e7] text-[#c08a3e] rounded-lg text-xs font-bold hover:bg-[#c08a3e] hover:text-white transition-colors"
+                        >
+                          +{frac === 0.5 ? '½' : frac === 0.25 ? '¼' : '¾'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {!isSmartMode && countingMode === 'fuzzy' && (
+                    <div className="flex gap-2">
+                      {[
+                        { val: 0.25, label: 'Poco' },
+                        { val: 0.5, label: 'Medio' },
+                        { val: 1, label: 'Lleno' }
+                      ].map((opt) => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={() => handleQuickSet(opt.val)}
+                          className="flex-1 py-2 border border-[#e5e0d4] text-[#3b1f1a]/70 rounded-lg text-xs font-bold hover:bg-[#f6f1e7] hover:text-[#3b1f1a] transition-all"
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                 </div>
               </div>
+            )
+          })}
+        </div>
 
-              {/* Botones de Conteo Rápido */}
-              {countingMode === 'fraction' && (
-                <div className="space-y-2">
-                  {/* Contador de contenedores completos */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500 uppercase">Contenedores:</span>
-                    <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // En blind count, si es null asumimos 0 para empezar a contar
-                          const currentValue = counts[item.id] ?? 0
-                          const currentBase = Math.floor(currentValue / capacity)
-                          const currentFraction = currentValue % capacity
-                          if (currentBase > 0) {
-                            handleInputChange(item.id, ((currentBase - 1) * capacity + currentFraction).toString())
-                          }
-                        }}
-                        className="px-3 py-2 font-bold text-xl hover:bg-gray-200"
-                      >
-                        −
-                      </button>
-                      <span className="px-4 py-2 font-bold text-lg bg-white min-w-[40px] text-center">
-                        {Math.floor((counts[item.id] ?? 0) / capacity)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentValue = counts[item.id] ?? 0
-                          const currentBase = Math.floor(currentValue / capacity)
-                          const currentFraction = currentValue % capacity
-                          handleInputChange(item.id, ((currentBase + 1) * capacity + currentFraction).toString())
-                        }}
-                        className="px-3 py-2 font-bold text-xl hover:bg-gray-200"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  {/* Selector de fracción adicional */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500 uppercase">+ Fracción:</span>
-                    <div className="flex gap-1 flex-1">
-                      {[0, 0.25, 0.5, 0.75].map((frac) => {
-                        const currentValue = counts[item.id] ?? 0
-                        const currentBase = Math.floor(currentValue / capacity) * capacity
-                        const currentFraction = currentValue % capacity
-                        const isActive = Math.abs(currentFraction - (frac * capacity)) < 0.01
-                        return (
-                          <button
-                            key={frac}
-                            type="button"
-                            onClick={() => {
-                              handleInputChange(item.id, (currentBase + frac * capacity).toString())
-                            }}
-                            className={`flex-1 py-2 font-bold rounded border text-sm ${isActive ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'}`}
-                          >
-                            {frac === 0 ? '0' : frac === 0.5 ? '½' : frac === 0.25 ? '¼' : '¾'}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
+        <div className="pt-6">
+          <label className="block text-sm font-bold text-[#3b1f1a] mb-2 uppercase tracking-wide opacity-80">Comentarios</label>
+          <textarea
+            rows={3}
+            className="w-full p-4 border border-[#e5e0d4] rounded-xl bg-white text-[#3b1f1a] focus:ring-2 focus:ring-[#c08a3e] focus:border-transparent outline-none transition-all resize-none shadow-sm"
+            placeholder="Incidencias, roturas o notas..."
+            value={comments}
+            onChange={e => setComments(e.target.value)}
+          />
+        </div>
 
-              {countingMode === 'fuzzy' && (
-                <div className="grid grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickSet(0)}
-                    className="py-2 bg-gray-100 text-gray-700 font-bold rounded hover:bg-gray-200 border border-gray-300 text-sm"
-                  >
-                    Vacío
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickSet(0.25)}
-                    className="py-2 bg-red-50 text-red-700 font-bold rounded hover:bg-red-100 border border-red-200 text-sm"
-                  >
-                    Poco
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickSet(0.5)}
-                    className="py-2 bg-yellow-50 text-yellow-700 font-bold rounded hover:bg-yellow-100 border border-yellow-200 text-sm"
-                  >
-                    Medio
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickSet(1)}
-                    className="py-2 bg-green-50 text-green-700 font-bold rounded hover:bg-green-100 border border-green-200 text-sm"
-                  >
-                    Lleno
-                  </button>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+        <div className="sticky bottom-4 pt-2">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-[#c08a3e] text-white py-4 rounded-xl font-display font-bold text-xl shadow-xl shadow-[#c08a3e]/30 hover:bg-[#a67633] transition-all active:scale-[0.98] disabled:opacity-70 disabled:grayscale"
+          >
+            {isSubmitting ? 'Guardando...' : 'Finalizar Conteo'}
+          </button>
+        </div>
+      </form>
 
-      <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">Comentarios / Incidencias (Opcional)</label>
-        <textarea
-          rows={3}
-          className="w-full p-3 border rounded-lg"
-          placeholder="Ej: Se cayó un frasco de mayonesa..."
-          value={comments}
-          onChange={e => setComments(e.target.value)}
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full bg-orange-600 text-white py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-orange-700 transition active:scale-95 disabled:opacity-50"
-      >
-        {isSubmitting ? 'Guardando...' : 'Confirmar Cierre del Día 🔒'}
-      </button>
-    </form>
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+      />
+    </>
   )
 }
