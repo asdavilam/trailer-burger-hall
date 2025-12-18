@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { submitDailyCount } from './actions'
 import { Toast, ToastType } from '@/components/ui/Toast'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 
 export function CountForm({ items }: { items: any[] }) {
   // Estado local para guardar los números que escribe el usuario (solo si cambia)
@@ -14,6 +16,10 @@ export function CountForm({ items }: { items: any[] }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDone, setIsDone] = useState(false)
   const [validationError, setValidationError] = useState<{ message: string, items: string[] } | null>(null)
+  const [isRestored, setIsRestored] = useState(false)
+
+  // Online status detection
+  const isOnline = useOnlineStatus()
 
   // Toast State
   const [toast, setToast] = useState<{ message: string, type: ToastType, isVisible: boolean }>({
@@ -25,6 +31,29 @@ export function CountForm({ items }: { items: any[] }) {
   const showToast = (message: string, type: ToastType = 'info') => {
     setToast({ message, type, isVisible: true })
   }
+
+  // Form persistence
+  const formData = { counts, units, comments }
+  const { isSaving, lastSaved, showSaved, restore, clear } = useFormPersistence({
+    key: 'count-form-data',
+    data: formData,
+    enabled: !isDone && Object.keys(counts).length > 0,
+    debounceMs: 3000 // 3 segundos (similar a Google Docs)
+  })
+
+  // Restore saved data on mount
+  useEffect(() => {
+    if (!isRestored && items.length > 0) {
+      const saved = restore()
+      if (saved && saved.counts && Object.keys(saved.counts).length > 0) {
+        setCounts(saved.counts)
+        setUnits(saved.units || {})
+        setComments(saved.comments || '')
+        showToast('Datos restaurados desde la última sesión', 'info')
+      }
+      setIsRestored(true)
+    }
+  }, [items.length, isRestored, restore])
 
   // Inicializar unidades por defecto
   if (Object.keys(units).length === 0 && items.length > 0) {
@@ -160,6 +189,7 @@ export function CountForm({ items }: { items: any[] }) {
 
     setIsSubmitting(false)
     setIsDone(true)
+    clear() // Clear saved form data after successful submission
     showToast('Inventario guardado correctamente', 'success')
   }
 
@@ -191,6 +221,41 @@ export function CountForm({ items }: { items: any[] }) {
   return (
     <>
       <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6 pb-20">
+        {/* Online/Offline Status Banner */}
+        {!isOnline && (
+          <div className="bg-[#fff0f0] border-l-4 border-[#6a1e1a] rounded-r-lg p-4 shadow-sm sticky top-0 z-30">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-[#6a1e1a] animate-pulse" />
+              <div className="flex-1">
+                <p className="text-[#6a1e1a] font-bold">Sin Conexión</p>
+                <p className="text-[#6a1e1a]/70 text-xs">Tus datos se están guardando localmente. Podrás enviarlos cuando se restablezca la conexión.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Auto-save Indicator */}
+        {(isSaving || showSaved) && (
+          <div className={`border-l-4 rounded-r-lg p-3 shadow-sm transition-all ${showSaved
+            ? 'bg-[#f0fdf4] border-[#6b8e62]'
+            : 'bg-[#fffbeb] border-[#f59e0b]'
+            }`}>
+            <div className="flex items-center gap-2">
+              {isSaving ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
+                  <p className="text-[#f59e0b] text-xs font-bold">Guardando...</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-[#6b8e62]" />
+                  <p className="text-[#6b8e62] text-xs font-bold">✓ Guardado</p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Alerta de pendientes */}
         {staleItems.length > 0 && (
           <div className="bg-[#fff8f0] border-l-4 border-[#c08a3e] rounded-r-lg p-4 shadow-sm">
@@ -413,11 +478,16 @@ export function CountForm({ items }: { items: any[] }) {
         <div className="sticky bottom-4 pt-2">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isOnline}
             className="w-full bg-[#c08a3e] text-white py-4 rounded-xl font-display font-bold text-xl shadow-xl shadow-[#c08a3e]/30 hover:bg-[#a67633] transition-all active:scale-[0.98] disabled:opacity-70 disabled:grayscale"
           >
-            {isSubmitting ? 'Guardando...' : 'Finalizar Conteo'}
+            {isSubmitting ? 'Guardando...' : !isOnline ? '⚠️ Sin Conexión - Datos Guardados' : 'Finalizar Conteo'}
           </button>
+          {lastSaved && (
+            <p className="text-center text-xs text-[#3b1f1a]/50 mt-2">
+              💾 Último guardado: {lastSaved.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
         </div>
       </form>
 

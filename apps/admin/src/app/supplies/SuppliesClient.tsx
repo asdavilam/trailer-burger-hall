@@ -20,6 +20,11 @@ function isPriceOutdated(lastCheck?: string): boolean {
     return daysSinceCheck > 30
 }
 
+// Función para verificar si el insumo no tiene precio
+function hasNoPrice(supply: Supply): boolean {
+    return !supply.cost_per_unit || supply.cost_per_unit === 0
+}
+
 export function SuppliesClient({ supplies }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<Supply | undefined>(undefined)
@@ -88,7 +93,14 @@ export function SuppliesClient({ supplies }: Props) {
             header: 'Insumo',
             cell: (item: Supply) => (
                 <div>
-                    <div className="text-sm font-bold text-[var(--color-secondary)]">{item.name}</div>
+                    <div className="flex items-center gap-2">
+                        <div className="text-sm font-bold text-[var(--color-secondary)]">{item.name}</div>
+                        {hasNoPrice(item) && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold bg-[var(--color-error)] text-white rounded-full uppercase tracking-wide animate-pulse">
+                                Sin Precio
+                            </span>
+                        )}
+                    </div>
                     <div className="text-xs text-[var(--color-secondary)]/60">
                         {item.brand && <span className="font-mono">{item.brand}</span>}
                         {item.category && <span className="ml-2 opacity-70">• {item.category}</span>}
@@ -151,8 +163,15 @@ export function SuppliesClient({ supplies }: Props) {
     const renderMobileItem = (item: Supply) => (
         <div className="space-y-3">
             <div className="flex justify-between items-start">
-                <div>
-                    <h3 className="font-bold text-[var(--color-secondary)]">{item.name}</h3>
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-[var(--color-secondary)]">{item.name}</h3>
+                        {hasNoPrice(item) && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold bg-[var(--color-error)] text-white rounded-full uppercase tracking-wide animate-pulse">
+                                Sin Precio
+                            </span>
+                        )}
+                    </div>
                     <p className="text-xs text-[var(--color-secondary)]/60">
                         {item.brand && <span>{item.brand}</span>}
                         {item.category && <span className="ml-2">• {item.category}</span>}
