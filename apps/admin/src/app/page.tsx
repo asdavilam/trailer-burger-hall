@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Badge } from '@/components/ui/Badge'
+import { getFinancialSettings } from './settings/actions'
 
 // Función para verificar si el precio requiere atención (0, null o > 30 días)
 function getPriceStatus(supply: any): 'ok' | 'missing' | 'outdated' {
@@ -36,9 +37,14 @@ export default async function AdminPage() {
 
   const purchasedTodayIds = new Set(logs?.map(log => log.supply_id) || [])
 
-  // Cálculos rápidos
+  // Traer buffer multiplier
+  const settings = await getFinancialSettings()
+  const bufferMultiplier = settings.stock_buffer_multiplier || 2.0
+
+  // Cálculos rápidos - PURCHASE ITEMS
   const allLowStockSupplies = supplies
     .filter(s => {
+      if (s.supply_type === 'production') return false // Excluir producción de esta lista
       const isLow = s.current_stock <= (s.min_stock || 5)
       const isPurchased = purchasedTodayIds.has(s.id)
       return isLow && !isPurchased // Ocultar si ya se compró hoy
@@ -52,6 +58,31 @@ export default async function AdminPage() {
   const lowStockSupplies = allLowStockSupplies.slice(0, 5)
   const totalLowStock = allLowStockSupplies.length
 
+  // PRODUCCIÓN ITEMS - Nuevos cálculos
+  const allLowProductionItems = supplies
+    .filter(s => {
+      if (s.supply_type !== 'production') return false
+      const min = s.min_stock ?? 5
+      const target = min * bufferMultiplier
+      const needsProduction = s.current_stock < target
+      const isProducedToday = purchasedTodayIds.has(s.id)
+      return needsProduction && !isProducedToday
+    })
+    .sort((a, b) => {
+      const minA = a.min_stock ?? 5
+      const targetA = minA * bufferMultiplier
+      const ratioA = a.current_stock / targetA
+
+      const minB = b.min_stock ?? 5
+      const targetB = minB * bufferMultiplier
+      const ratioB = b.current_stock / targetB
+
+      return ratioA - ratioB
+    })
+
+  const lowProductionItems = allLowProductionItems.slice(0, 5)
+  const totalLowProduction = allLowProductionItems.length
+
   const priceAlerts = supplies.filter(s => getPriceStatus(s) !== 'ok')
   const activeProducts = products.length
 
@@ -64,7 +95,7 @@ export default async function AdminPage() {
       />
 
       {/* Tarjetas de Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Tarjeta de Inventario - MEJORADA */}
         <Card className={totalLowStock > 0 ? 'border-[var(--color-error)] bg-red-50' : 'border-[var(--color-success)] bg-green-50'}>
           <CardHeader className="pb-2">
@@ -156,6 +187,55 @@ export default async function AdminPage() {
           <CardFooter>
             <Button variant="outline" size="sm" asChild className="w-full bg-white/50 hover:bg-white">
               <Link href="/supplies">Revisar Precios →</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Tarjeta de Producción Necesaria - NUEVA */}
+        <Card className={totalLowProduction > 0 ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}>
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-start">
+              <CardTitle className="text-sm font-medium opacity-80 uppercase tracking-wide">Producción Urgente</CardTitle>
+              <span className="text-2xl">👩‍🍳</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-4xl font-bold ${totalLowProduction > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
+              {totalLowProduction}
+            </div>
+            <p className="text-sm mt-2 opacity-70">
+              {totalLowProduction > 0
+                ? `${totalLowProduction} receta${totalLowProduction > 1 ? 's' : ''} requieren preparación.`
+                : 'Todas las recetas tienen stock saludable.'}
+            </p>
+
+            {/* Lista de recetas a producir */}
+            {lowProductionItems.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {lowProductionItems.map(item => {
+                  const min = item.min_stock ?? 5
+                  const target = min * bufferMultiplier
+                  const missing = target - item.current_stock
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href="/production/production-checklist"
+                      className="flex items-center justify-between p-2 bg-white/70 rounded hover:bg-white transition-colors text-sm"
+                    >
+                      <span className="font-medium text-gray-700 truncate">{item.name}</span>
+                      <Badge className="ml-2 shrink-0 bg-purple-100 text-purple-800 hover:bg-purple-200">
+                        Falta {missing.toFixed(1)} {item.unit}
+                      </Badge>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" size="sm" asChild className="w-full bg-white/50 hover:bg-white">
+              <Link href="/production/production-checklist">Ver Lista de Producción →</Link>
             </Button>
           </CardFooter>
         </Card>

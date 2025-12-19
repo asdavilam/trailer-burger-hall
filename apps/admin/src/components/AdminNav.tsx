@@ -16,8 +16,13 @@ const inventorySubItems = [
     { label: 'Conteo', href: '/supplies/count' },
 ]
 
+const productionSubItems = [
+    { label: 'Lista de producción', href: '/production/production-list', exact: true },
+    { label: 'Checklist', href: '/production/production-checklist' },
+]
+
 const menuSubItems = [
-    { label: 'General', href: '/products', exact: true },
+    { label: 'Productos', href: '/products', exact: true },
     { label: 'Recetas', href: '/products/recipes' },
 ]
 
@@ -38,6 +43,11 @@ const navItems: NavItem[] = [
         label: 'Inventario',
         href: '/supplies',
         children: inventorySubItems
+    },
+    {
+        label: 'Producción',
+        href: '/production/production-list',
+        children: productionSubItems
     },
     { label: 'Equipo', href: '/team' },
     { label: 'Configuración', href: '/settings' },
@@ -139,6 +149,7 @@ export function AdminNav() {
 
     const isInventorySection = pathname.startsWith('/supplies')
     const isCatalogSection = pathname.startsWith('/products')
+    const isProductionSection = pathname.startsWith('/production/production-list')
 
     const visibleNavItems = navItems.filter(item => {
         if (role === 'admin') return true
@@ -229,6 +240,29 @@ export function AdminNav() {
                 {isCatalogSection && (
                     <div className="flex overflow-x-auto px-2 py-1.5 gap-2 bg-[#f0ede6] border-t border-[#e5e0d4] no-scrollbar shadow-inner">
                         {menuSubItems.map(subItem => {
+                            const isActive = subItem.exact
+                                ? pathname === subItem.href
+                                : pathname.startsWith(subItem.href)
+
+                            return (
+                                <Link
+                                    key={subItem.href}
+                                    href={subItem.href}
+                                    className={`text-[10px] font-bold whitespace-nowrap px-2.5 py-1 rounded-lg border transition-all ${isActive
+                                        ? 'bg-[#c08a3e] border-[#c08a3e] text-white shadow-sm'
+                                        : 'bg-white border-[#e5e0d4] text-[#3b1f1a]/70 hover:bg-[#fff9f2]'
+                                        }`}
+                                >
+                                    {subItem.label}
+                                </Link>
+                            )
+                        })}
+                    </div>
+                )}
+                {/* NIVEL 3: Sub-menú de Producción */}
+                {isProductionSection && (
+                    <div className="flex overflow-x-auto px-2 py-1.5 gap-2 bg-[#f0ede6] border-t border-[#e5e0d4] no-scrollbar shadow-inner">
+                        {productionSubItems.map(subItem => {
                             const isActive = subItem.exact
                                 ? pathname === subItem.href
                                 : pathname.startsWith(subItem.href)

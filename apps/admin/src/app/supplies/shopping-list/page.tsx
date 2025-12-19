@@ -27,6 +27,11 @@ export default async function ShoppingListPage() {
   const settings = await getFinancialSettings()
   const bufferMultiplier = settings.stock_buffer_multiplier || 2.0
 
+  // 1.8 Traemos TODAS las relaciones de ingredientes (flat)
+  const { data: allIngredients } = await supabase
+    .from('supply_ingredients')
+    .select('parent_supply_id, child_supply_id, quantity')
+
   // 2. Traemos logs de compras DE HOY (Zona Horaria México)
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const { data: logs } = await supabase
@@ -38,14 +43,70 @@ export default async function ShoppingListPage() {
   // Set de IDs comprados hoy
   const purchasedTodayIds = new Set(logs?.map(log => log.supply_id) || [])
 
+  // 2.5 CÁLCULO DE DEMANDA DERIVADA
+  // Calculamos cuánto de cada insumo BASE se necesita para cubrir los faltantes de PRODUCCIÓN
+  const demandMap = new Map<string, number>() // supply_id -> additional_quantity_needed
+
+  supplies.forEach(item => {
+    // Solo nos importa si es producción y está bajo de stock
+    if (item.supply_type === 'production') {
+      const min = item.min_stock ?? 0
+      const target = min * bufferMultiplier
+      const missing = target - item.current_stock
+
+      if (missing > 0) {
+        // Buscar sus ingredientes
+        const myIngredients = allIngredients?.filter(ing => ing.parent_supply_id === item.id) || []
+
+        // El rendimiento (yield_quantity) es cuánto sale de la receta.
+        // Si yield_quantity = 1, entonces ingredients list es para 1 unidad.
+        // Si yield_quantity > 1, entonces ingredients list es para N unidades.
+        // Factor unitario = 1 / yield_quantity
+
+        const yieldQty = item.yield_quantity || 1
+
+        myIngredients.forEach(ing => {
+          // Cuánto del ingrediente se necesita para cubrir 1 unidad faltante del padre?
+          // (ing.quantity) es lo que se usa para producir (yieldQty) del padre.
+          // Por ende, por cada unidad faltante del padre, necesitamos (ing.quantity / yieldQty)
+
+          const quantityPerParentUnit = ing.quantity / yieldQty
+          const totalIngredientNeeded = quantityPerParentUnit * missing
+
+          const currentDemand = demandMap.get(ing.child_supply_id) || 0
+          demandMap.set(ing.child_supply_id, currentDemand + totalIngredientNeeded)
+        })
+      }
+    }
+  })
+
   // 3. FILTRADO INTELIGENTE:
-  // - Stock bajo (<= min_stock)
+  // - Stock bajo (<= min_stock) O (Stock - Demanda <= min_stock)
+  // - NO es producción (los de producción se disolvieron en componentes)
   // - NO comprado hoy
   const shoppingList = supplies.filter(item => {
+    // Si es producción, lo ignoramos (ya desglosamos sus necesidades)
+    if (item.supply_type === 'production') return false
+
     const min = item.min_stock ?? 5
-    const isLowStock = item.current_stock <= min
+    const target = min * bufferMultiplier
+
+    // Demanda extra derivada de productos compuestos
+    const extraDemand = demandMap.get(item.id) || 0
+
+    // El stock efectivo es lo que tienes MENOS lo que ya está "comprometido" para producción
+    // Si tienes 10kg, pero necesitas 8kg para hamburguesas, tu stock libre es 2kg.
+    const effectiveStock = item.current_stock - extraDemand
+
+    // Condición de compra:
+    // 1. Si el stock real está bajo el mínimo
+    // 2. O si el stock efectivo (restando demanda) cae bajo el objetivo (compra lo necesario para cubrir demanda + buffer)
+    // Simplificación: Si effectiveStock < target, hay que comprar.
+
+    const needsPurchase = effectiveStock < target
     const isPurchasedToday = purchasedTodayIds.has(item.id)
-    return isLowStock && !isPurchasedToday
+
+    return needsPurchase && !isPurchasedToday
   })
 
   // Lista de lo comprado hoy (para referencia)
@@ -53,9 +114,15 @@ export default async function ShoppingListPage() {
 
   // Calcular costo estimado total
   const totalCost = shoppingList.reduce((acc, item) => {
-    // Calcular meta usando el multiplicador configurado (default x2)
-    const target = (item.min_stock || 5) * bufferMultiplier
-    const missing = target - item.current_stock
+    // Calcular meta usando el multiplicador configurado
+    const target = (item.min_stock || 0) * bufferMultiplier
+    const extraDemand = demandMap.get(item.id) || 0
+
+    // Necesitamos llegar al target + cubrir la demanda extra
+    // Equivalente a: (target + extraDemand) - current_stock
+    const requiredTotal = target + extraDemand
+    const missing = requiredTotal - item.current_stock
+
     const cost = missing > 0 ? missing * item.cost_per_unit : 0
     return acc + cost
   }, 0)
@@ -64,7 +131,7 @@ export default async function ShoppingListPage() {
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
       <PageHeader
         title="Lista de Compras 🛒"
-        description={`Insumos a reponer (Meta: x${bufferMultiplier} del mínimo).`}
+        description={`Insumos a reponer (Meta: x${bufferMultiplier} del mínimo + Demanda de Producción).`}
       >
         <Button variant="ghost" asChild>
           <Link href="/supplies">
@@ -100,20 +167,34 @@ export default async function ShoppingListPage() {
           <div className="space-y-3 sm:space-y-4">
             {shoppingList.map((item) => {
               // Calculamos cuánto falta para la meta (usando multiplicador)
-              const target = (item.min_stock || 5) * bufferMultiplier
-              const missing = target - item.current_stock
+              const min = item.min_stock || 0
+              const target = min * bufferMultiplier
+              const extraDemand = demandMap.get(item.id) || 0
+
+              // Total necesario = Lo que quiero tener en repisa (Target) + Lo que necesito YA para cocinar (Demand)
+              // Menos lo que ya tengo
+              const totalRequired = target + extraDemand
+              const missing = totalRequired - item.current_stock
+
+              const isCritical = item.current_stock <= min
 
               return (
-                <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow border-[#e5e0d4]">
+                <Card key={item.id} className={`overflow-hidden hover:shadow-md transition-shadow ${isCritical ? 'border-red-200 bg-red-50/30' : 'border-[#e5e0d4]'}`}>
                   <CardContent className="p-4 flex flex-col gap-4">
                     {/* Header: Nombre y Proveedor */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-1 rounded-full bg-[var(--color-error)] flex-shrink-0" />
+                        <div className={`h-8 w-1 rounded-full flex-shrink-0 ${isCritical ? 'bg-red-500' : 'bg-orange-400'}`} />
                         <div>
                           <div className="font-bold text-[var(--color-secondary)] text-lg leading-tight">{item.name}</div>
-                          <div className="text-xs text-[#3b1f1a]/50 font-bold uppercase tracking-wider mt-1">
-                            {item.provider || 'Genérico'}
+                          <div className="text-xs text-[#3b1f1a]/50 font-bold uppercase tracking-wider mt-1 flex gap-2">
+                            <span>{item.provider || 'Genérico'}</span>
+                            {/* Mostrar si hay demanda derivada */}
+                            {extraDemand > 0 && (
+                              <span className="text-purple-600 font-extrabold bg-purple-50 px-1 rounded">
+                                Requiere {extraDemand.toFixed(2)}{item.unit} para producción
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -130,20 +211,20 @@ export default async function ShoppingListPage() {
                         // Button shows Presentation (handled in QuickPurchase)
                         const currentDisplay = `${item.current_stock} ${item.unit}`
 
-                        // Meta shows packages if applicable, to help with purchasing decision.
-                        // We keep it as is.
+                        // La meta visual sigue siendo el target de stock minimo * buffer
+                        // Pero si hay demanda extra, la mostramos en el missing amount
                         const targetDisplay = isPkg ? (target / pkgSize!).toFixed(1) : target.toFixed(1)
 
                         return (
                           <>
                             <div className="flex items-center gap-2">
                               <span className="text-sm text-[#3b1f1a]/70">Tienes:</span>
-                              <span className="font-bold text-[#9f1239] bg-[#fff1f2] px-2 py-0.5 rounded text-sm border border-[#fecdd3]">
+                              <span className={`font-bold px-2 py-0.5 rounded text-sm border ${isCritical ? 'text-red-700 bg-red-100 border-red-200' : 'text-[#9f1239] bg-[#fff1f2] border-[#fecdd3]'}`}>
                                 {currentDisplay}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-[#3b1f1a]/50 font-bold uppercase">Meta:</span>
+                              <span className="text-xs text-[#3b1f1a]/50 font-bold uppercase">Meta Stock:</span>
                               <span className="font-bold text-[#3b1f1a] text-sm">{targetDisplay} <span className="text-[10px] font-normal text-gray-400">({isPkg ? (pkgName || 'Paq') : item.unit} x{bufferMultiplier})</span></span>
                             </div>
                           </>
