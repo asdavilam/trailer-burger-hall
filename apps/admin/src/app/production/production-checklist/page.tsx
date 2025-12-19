@@ -114,12 +114,20 @@ export default async function ProductionChecklistPage() {
                                                     <div className="font-bold text-[var(--color-secondary)] text-lg leading-tight">{item.name}</div>
                                                     <div className="text-xs text-[#3b1f1a]/50 font-bold uppercase tracking-wider mt-1">
                                                         {item.category || 'General'} • Rendimiento: {item.yield_quantity} {item.unit}
+                                                        {item.quantity_per_package && item.purchase_unit && (
+                                                            <span className="text-blue-600"> (≈{(item.yield_quantity! / item.quantity_per_package).toFixed(2)} {item.purchase_unit})</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-xs text-purple-600 font-bold uppercase">A Producir</span>
                                                 <span className="text-2xl font-bold text-purple-700">{missing > 0 ? missing.toFixed(1) : 0} <span className="text-sm text-gray-400">{item.unit}</span></span>
+                                                {item.quantity_per_package && item.purchase_unit && missing > 0 && (
+                                                    <div className="text-xs text-blue-600 font-bold mt-1">
+                                                        ≈ {(missing / item.quantity_per_package).toFixed(2)} {item.purchase_unit}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -145,6 +153,8 @@ export default async function ProductionChecklistPage() {
                                                 missingAmount={missing > 0 ? missing : 0}
                                                 unit={item.unit}
                                                 yieldQuantity={item.yield_quantity || 1}
+                                                quantityPerPackage={item.quantity_per_package}
+                                                purchaseUnit={item.purchase_unit}
                                             />
                                         </div>
                                     </CardContent>

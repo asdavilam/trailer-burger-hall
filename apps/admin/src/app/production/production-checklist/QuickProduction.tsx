@@ -10,21 +10,34 @@ export function QuickProduction({
     name,
     missingAmount,
     unit,
-    yieldQuantity
+    yieldQuantity,
+    quantityPerPackage,
+    purchaseUnit
 }: {
     id: string,
     name: string,
     missingAmount: number,
     unit: string,
-    yieldQuantity: number
+    yieldQuantity: number,
+    quantityPerPackage?: number | null,
+    purchaseUnit?: string | null
 }) {
-    // Suggest producing in batches of the yield quantity
+    // Determinar si usamos presentación o unidad base
+    const hasPresentation = quantityPerPackage && purchaseUnit
+
+    // Calcular cantidad inicial sugerida
     const calculateInitial = () => {
-        const batchesNeeded = missingAmount / yieldQuantity
-        return Math.ceil(batchesNeeded)
+        if (hasPresentation) {
+            // Sugerir en presentaciones (ej: botellas)
+            return (missingAmount / quantityPerPackage!).toFixed(2)
+        } else {
+            // Sugerir en unidad base redondeado al lote más cercano
+            const batches = Math.ceil(missingAmount / yieldQuantity)
+            return (batches * yieldQuantity).toFixed(1)
+        }
     }
 
-    const [batches, setBatches] = useState<string>(calculateInitial().toString())
+    const [amount, setAmount] = useState<string>(calculateInitial())
     const [loading, setLoading] = useState(false)
     const [toast, setToast] = useState<{ message: string, type: ToastType, isVisible: boolean }>({
         message: '',
@@ -37,13 +50,16 @@ export function QuickProduction({
     }
 
     const handleProduction = async () => {
-        const val = parseFloat(batches)
+        const val = parseFloat(amount)
         if (!val || val <= 0) return
 
         setLoading(true)
 
-        // Final quantity is batches * yield per batch
-        const finalQty = val * yieldQuantity
+        // Convertir a unidad base si es presentación
+        let finalQty = val
+        if (hasPresentation) {
+            finalQty = val * quantityPerPackage!
+        }
 
         const res = await addStock(id, finalQty)
         setLoading(false)
@@ -51,52 +67,42 @@ export function QuickProduction({
         if (res?.error) {
             showToast('Error: ' + res.error, 'error')
         } else {
-            showToast(`✅ ${name} producido: +${finalQty.toFixed(1)} ${unit}`, 'success')
+            const displayAmount = hasPresentation
+                ? `${val} ${purchaseUnit}`
+                : `${finalQty.toFixed(1)} ${unit}`
+            showToast(`✅ ${name} producido: +${displayAmount}`, 'success')
         }
     }
 
-    const totalUnits = (parseFloat(batches) || 0) * yieldQuantity
+    // Label a mostrar
+    const label = hasPresentation ? purchaseUnit! : unit
 
     return (
-        <div className="flex flex-col gap-2 w-full">
-            {/* Info helper */}
-            <div className="text-xs text-purple-700 bg-purple-50 p-2 rounded border border-purple-200">
-                <strong>Cada lote rinde:</strong> {yieldQuantity} {unit}
+        <div className="flex flex-row items-center gap-2 w-full">
+            {/* Input Group */}
+            <div className="flex-1 flex items-center border-2 border-purple-500 rounded-xl overflow-hidden bg-white shadow-sm h-[42px]">
+                <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full pl-3 py-2 text-base font-bold text-purple-900 focus:ring-0 outline-none text-center bg-transparent"
+                    placeholder="0"
+                    step="any"
+                />
+                <div className="bg-purple-50 text-xs font-bold text-purple-900 px-3 border-l border-purple-300 flex items-center h-full whitespace-nowrap justify-center min-w-[4rem]">
+                    {hasPresentation && <span className="mr-1">📦</span>}
+                    {label}
+                </div>
             </div>
 
-            <div className="flex flex-row items-center gap-2 w-full">
-                {/* Input Group */}
-                <div className="flex-1 flex items-center border-2 border-purple-500 rounded-xl overflow-hidden bg-white shadow-sm h-[42px]">
-                    <input
-                        type="number"
-                        value={batches}
-                        onChange={(e) => setBatches(e.target.value)}
-                        className="w-full pl-3 py-2 text-base font-bold text-purple-900 focus:ring-0 outline-none text-center bg-transparent"
-                        placeholder="0"
-                        step="1"
-                    />
-                    <div className="bg-purple-50 text-xs font-bold text-purple-900 px-3 border-l border-purple-300 flex items-center h-full whitespace-nowrap justify-center min-w-[5rem]">
-                        <span className="mr-1">🍳</span>
-                        Lotes
-                    </div>
-                </div>
-
-                {/* Action Button */}
-                <Button
-                    onClick={handleProduction}
-                    disabled={loading}
-                    className="h-[42px] px-6 rounded-xl shadow-md flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                    {loading ? '...' : '✅ Producir'}
-                </Button>
-            </div>
-
-            {/* Total preview */}
-            {parseFloat(batches) > 0 && (
-                <div className="text-xs text-center text-purple-700 font-bold">
-                    = {totalUnits.toFixed(1)} {unit} total
-                </div>
-            )}
+            {/* Action Button */}
+            <Button
+                onClick={handleProduction}
+                disabled={loading}
+                className="h-[42px] px-6 rounded-xl shadow-md flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+                {loading ? '...' : '✅'}
+            </Button>
 
             <Toast
                 message={toast.message}

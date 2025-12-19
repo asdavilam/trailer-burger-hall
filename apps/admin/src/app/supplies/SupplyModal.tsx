@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createSupply, updateSupply } from './actions'
-import { Supply, SupplyType, CountingMode } from '@trailer/shared'
+import { getUsers } from '../team/user-actions'
+import { Supply, SupplyType, CountingMode, UserProfile } from '@trailer/shared'
 
 type Props = {
   supply?: Supply // Si viene, es edición. Si no, es crear.
@@ -13,6 +14,12 @@ export function SupplyModal({ supply, onClose }: Props) {
   // Hardcoded to purchase
   const supplyType: SupplyType = 'purchase'
   const [countingMode, setCountingMode] = useState<CountingMode>(supply?.counting_mode || 'integer')
+
+  const [users, setUsers] = useState<Pick<UserProfile, 'id' | 'display_name' | 'role'>[]>([])
+
+  useEffect(() => {
+    getUsers().then(data => setUsers(data as any))
+  }, [])
 
   // Purchase Mode State
   const [packageCost, setPackageCost] = useState(supply?.package_cost || 0)
@@ -275,6 +282,25 @@ export function SupplyModal({ supply, onClose }: Props) {
               <label className="block text-xs font-bold text-gray-500 uppercase">Marca</label>
               <input name="brand" defaultValue={supply?.brand || ''} className="w-full p-2 border rounded bg-white" />
             </div>
+          </div>
+
+          <div className="md:col-span-2 mt-4 bg-orange-50 p-3 rounded border border-orange-100">
+            <label className="block text-xs font-bold text-orange-800 uppercase mb-2">
+              👤 Responsable de Compra (Opcional)
+            </label>
+            <select
+              name="assigned_user_id"
+              defaultValue={supply?.assigned_user_id || ''}
+              className="w-full p-2 border rounded bg-white"
+            >
+              <option value="">-- General / Proveedor --</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.display_name} ({u.role})</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-orange-600 mt-1">
+              Si seleccionas a alguien, este insumo aparecerá predeterminadamente en SU lista de compras.
+            </p>
           </div>
         </div>
 
