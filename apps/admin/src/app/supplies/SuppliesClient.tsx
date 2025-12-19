@@ -219,9 +219,11 @@ export function SuppliesClient({ supplies }: Props) {
                 title="Inventario de Insumos"
                 description="Gestiona tus materias primas y costos."
             >
-                <Button onClick={handleCreate} variant="primary">
-                    Nuevo Insumo
-                </Button>
+                <div className="flex gap-2">
+                    <Button onClick={handleCreate} variant="primary">
+                        Nuevo Insumo
+                    </Button>
+                </div>
             </PageHeader>
 
             {/* Barra de Búsqueda */}

@@ -12,5 +12,9 @@ export default async function SuppliesPage() {
 
   const supplies = await getSupplies()
 
-  return <SuppliesClient supplies={supplies} />
+  // Filtrar para mostrar SOLO insumos de compra (purchase)
+  // Los de producción se gestionan en /supplies/production-list
+  const purchaseSupplies = supplies.filter(s => s.supply_type === 'purchase')
+
+  return <SuppliesClient supplies={purchaseSupplies} />
 }
