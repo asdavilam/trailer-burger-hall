@@ -125,3 +125,37 @@ export type ProductIngredient = {
 
   quantity: number;
 };
+
+// 4. POS Account Types (Sistema de Cuentas)
+export type ServiceType = 'dine_in' | 'takeout';
+export type AccountStatus = 'open' | 'closed';
+
+export type POSAccount = {
+  id: string;
+  customer_name: string;
+  service_type: ServiceType;
+  status: AccountStatus;
+  total_amount: number;
+  paid_amount: number;
+  created_by: string;
+  created_at: string;
+  closed_at?: string | null;
+  notes?: string | null;
+};
+
+export type POSAccountItem = {
+  id: string;
+  account_id: string;
+  product_id: string;
+  variant_id: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  modifiers: Array<{ modifier_id: string; quantity: number }>;
+  created_at: string;
+};
+
+export type POSAccountWithItems = POSAccount & {
+  items?: POSAccountItem[];
+  pending_balance: number; // calculated: total_amount - paid_amount
+};

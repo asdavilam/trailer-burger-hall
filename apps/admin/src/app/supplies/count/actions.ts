@@ -34,6 +34,7 @@ export async function getMyAssignments() {
       supplies (
         id,
         name,
+        category,
         unit,
         current_stock,
         counting_mode,

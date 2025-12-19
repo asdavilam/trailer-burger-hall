@@ -565,7 +565,27 @@ export function SupplyModal({ supply, onClose }: Props) {
         {/* Categoría (Común) */}
         <div className="pt-4">
           <label className="block text-xs font-bold text-gray-500 uppercase">Categoría</label>
-          <input name="category" defaultValue={supply?.category || ''} placeholder="ej. Carnes, Vegetales, Salsas" className="w-full p-2 border rounded" />
+          <select
+            name="category"
+            defaultValue={supply?.category || 'Abarrotes'}
+            className="w-full p-2 border rounded bg-white"
+          >
+            {[
+              'Abarrotes',
+              'Aderezos',
+              'Bebidas',
+              'Congelados',
+              'Proteínas',
+              'Desechables',
+              'Limpieza e Higiene',
+              'Panadería',
+              'Lácteos y Refrigerados',
+              'Insumo',
+              'Frescos'
+            ].map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex gap-2 pt-4 border-t">

@@ -126,21 +126,25 @@ export default async function ShoppingListPage() {
                         const pkgName = item.purchase_unit
                         const isPkg = (pkgSize && pkgSize > 1) || (pkgSize === 1 && !!pkgName)
 
-                        const currentDisplay = isPkg ? (item.current_stock / pkgSize!).toFixed(1) : item.current_stock
+                        // Logic: Always show base unit for "Stock" (User Request)
+                        // Button shows Presentation (handled in QuickPurchase)
+                        const currentDisplay = `${item.current_stock} ${item.unit}`
+
+                        // Meta shows packages if applicable, to help with purchasing decision.
+                        // We keep it as is.
                         const targetDisplay = isPkg ? (target / pkgSize!).toFixed(1) : target.toFixed(1)
-                        const unitDisplay = isPkg ? (pkgName || 'Paq') : item.unit
 
                         return (
                           <>
                             <div className="flex items-center gap-2">
                               <span className="text-sm text-[#3b1f1a]/70">Tienes:</span>
                               <span className="font-bold text-[#9f1239] bg-[#fff1f2] px-2 py-0.5 rounded text-sm border border-[#fecdd3]">
-                                {currentDisplay} {unitDisplay}
+                                {currentDisplay}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-[#3b1f1a]/50 font-bold uppercase">Meta:</span>
-                              <span className="font-bold text-[#3b1f1a] text-sm">{targetDisplay} <span className="text-[10px] font-normal text-gray-400">(x{bufferMultiplier})</span></span>
+                              <span className="font-bold text-[#3b1f1a] text-sm">{targetDisplay} <span className="text-[10px] font-normal text-gray-400">({isPkg ? (pkgName || 'Paq') : item.unit} x{bufferMultiplier})</span></span>
                             </div>
                           </>
                         )

@@ -1,0 +1,155 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Paleta de colores semántica */
+  --color-primary: var(--color-bronze);
+  --color-primary-foreground: #ffffff;
+  
+  --color-secondary: var(--color-espresso);
+  --color-secondary-foreground: #ffffff;
+
+  --color-accent: var(--color-sage);
+  --color-accent-foreground: #ffffff;
+
+  --color-background: var(--color-marfil);
+  --color-surface: #ffffff;
+  
+  --color-error: var(--color-wine);
+  --color-success: #15803d; /* green-700 */
+  --color-warning: #b45309; /* amber-700 */
+
+  /* Tipografía - Optimizada para tablet */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Montserrat', sans-serif;
+
+  /* Bordes y Radios - Más grandes para touch */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  /* Espaciado para touch targets */
+  --touch-target-min: 48px;
+}
+
+/* === Tokens de marca (Trailer Burger Hall Style Guide) === */
+:root {
+  /* Paleta de marca Base */
+  --color-espresso: #3b1f1a;
+  --color-bronze: #c08a3e;
+  --color-sage: #6b8e62;
+  --color-wine: #6a1e1a;
+  --color-marfil: #f6f1e7;
+  --color-grafito: #1a1a1a;
+}
+
+/* === Accesibilidad y UX para tablet === */
+:focus-visible {
+  outline: 3px solid var(--color-bronze);
+  outline-offset: 3px;
+}
+
+/* Base del documento */
+body {
+  background-color: var(--color-background);
+  color: var(--color-espresso);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  /* Optimización para tablet */
+  font-size: 18px;
+  line-height: 1.6;
+  user-select: none; /* Evitar selección accidental en tablet */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Utilidades de tipografía */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-sans {
+  font-family: var(--font-body);
+}
+
+/* === Botones optimizados para touch === */
+.btn-touch {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: 1rem 1.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn-primary {
+  background-color: var(--color-bronze);
+  color: var(--color-primary-foreground);
+  border: 2px solid var(--color-bronze);
+}
+
+.btn-primary:hover {
+  background-color: #b07a35;
+  border-color: #b07a35;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  background-color: var(--color-espresso);
+  color: var(--color-secondary-foreground);
+  border: 2px solid var(--color-espresso);
+}
+
+.btn-secondary:hover {
+  background-color: #2d1713;
+  border-color: #2d1713;
+}
+
+.btn-secondary:active {
+  transform: scale(0.97);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-espresso);
+  border: 2px solid var(--color-espresso);
+}
+
+.btn-outline:hover {
+  background-color: var(--color-espresso);
+  color: white;
+}
+
+.btn-outline:active {
+  transform: scale(0.97);
+}
+
+/* Card para contenido */
+.card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(59, 31, 26, 0.1);
+  border: 1px solid rgba(59, 31, 26, 0.08);
+}
+
+/* Grid optimizado para tablet landscape */
+.pos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* Inputs (checkbox, radio) */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-bronze);
+  min-width: 24px;
+  min-height: 24px;
+}
