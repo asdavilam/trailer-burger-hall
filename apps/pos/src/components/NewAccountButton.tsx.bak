@@ -1,0 +1,35 @@
+'use client'
+
+import { useState } from 'react'
+import { Plus } from 'lucide-react'
+import { NewAccountDialog } from './NewAccountDialog'
+
+interface NewAccountButtonProps {
+    onAccountCreated: () => void
+}
+
+export function NewAccountButton({ onAccountCreated }: NewAccountButtonProps) {
+    const [showDialog, setShowDialog] = useState(false)
+
+    return (
+        <>
+            <button
+                onClick={() => setShowDialog(true)}
+                className="btn-touch btn-primary flex items-center justify-center gap-3 px-8 py-6 text-xl font-bold shadow-lg hover:shadow-xl w-full sm:w-auto"
+            >
+                <Plus className="w-8 h-8" strokeWidth={3} />
+                Nueva Cuenta
+            </button>
+
+            {showDialog && (
+                <NewAccountDialog
+                    onClose={() => setShowDialog(false)}
+                    onSuccess={() => {
+                        onAccountCreated()
+                        setShowDialog(false)
+                    }}
+                />
+            )}
+        </>
+    )
+}

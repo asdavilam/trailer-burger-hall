@@ -2,11 +2,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-interface UseFormPersistenceOptions<T> {
+export interface UseFormPersistenceOptions<T> {
     key: string
     data: T
     enabled?: boolean
     debounceMs?: number
+    expirationHours?: number // New prop
+}
+
+interface StoredData<T> {
+    timestamp: number
+    content: T
 }
 
 /**
@@ -15,12 +21,14 @@ interface UseFormPersistenceOptions<T> {
  * @param data - Data to persist
  * @param enabled - Whether persistence is enabled (default: true)
  * @param debounceMs - Debounce time for auto-save (default: 500ms)
+ * @param expirationHours - Hours before data expires (default: 18)
  */
 export function useFormPersistence<T>({
     key,
     data,
     enabled = true,
-    debounceMs = 500
+    debounceMs = 500,
+    expirationHours = 12
 }: UseFormPersistenceOptions<T>) {
     const [isSaving, setIsSaving] = useState(false)
     const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -44,7 +52,11 @@ export function useFormPersistence<T>({
         // Debounced save
         timeoutRef.current = setTimeout(() => {
             try {
-                localStorage.setItem(key, JSON.stringify(data))
+                const payload: StoredData<T> = {
+                    timestamp: Date.now(),
+                    content: data
+                }
+                localStorage.setItem(key, JSON.stringify(payload))
                 setLastSaved(new Date())
                 setIsSaving(false)
                 setShowSaved(true)
@@ -76,9 +88,40 @@ export function useFormPersistence<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const restore = (): T | null => {
         try {
-            const saved = localStorage.getItem(key)
-            if (saved) {
-                return JSON.parse(saved) as T
+            const raw = localStorage.getItem(key)
+            if (raw) {
+                const parsed = JSON.parse(raw)
+
+                // Check if it's the old format (direct data) or new format (wrapper)
+                // We assume new format has 'timestamp' number. 
+                // To be safe, we can try to detect or just assume migration implies clearing old data if format mismatch triggers logic.
+                // But simpler: check if 'timestamp' exists.
+
+                let content: T | null = null
+                let timestamp = 0
+
+                if ('timestamp' in parsed && 'content' in parsed) {
+                    // New format
+                    content = parsed.content
+                    timestamp = parsed.timestamp
+                } else {
+                    // Old format (or just data). 
+                    // To migrate cleanly, we might want to discard old data to be safe, 
+                    // OR accept it this one time.
+                    // Given the user wants to Fix persistence, treating old untimestamped data as EXPIRED is safer.
+                    console.warn('Found untimestamped/legacy data, discarding to ensure freshness.')
+                    return null
+                }
+
+                // Check Expiration
+                const ageHours = (Date.now() - timestamp) / (1000 * 60 * 60)
+                if (ageHours > expirationHours) {
+                    console.log(`Data expired (${ageHours.toFixed(1)} hours old), clearing.`)
+                    localStorage.removeItem(key)
+                    return null
+                }
+
+                return content
             }
         } catch (error) {
             console.error('Failed to restore form data:', error)
