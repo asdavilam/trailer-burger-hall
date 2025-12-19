@@ -36,20 +36,20 @@ export async function createSupply(formData: FormData) {
 
   let costPerUnit = 0
   let packageCost = 0
-  let quantityPerPackage = 1
-  let purchaseUnit = null
+  let quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || null
+  let purchaseUnit = (formData.get('purchase_unit') as string) || null
   let provider = null
   let brand = null
 
   if (supplyType === 'purchase') {
     packageCost = parseFloat(formData.get('package_cost') as string) || 0
-    quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
+    // quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1 // This line is now initialized above
     purchaseUnit = formData.get('purchase_unit') as string
     provider = formData.get('provider') as string
     brand = formData.get('brand') as string
 
     // Calcular costo unitario automáticamente
-    costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
+    costPerUnit = quantityPerPackage && quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
   } else {
     // Producción Interna
     // Si es nuevo, el costo empieza en 0 o lo que pongan manual, luego se recalcula con ingredientes
@@ -74,6 +74,7 @@ export async function createSupply(formData: FormData) {
     average_weight: averageWeight,
     counting_mode: countingMode,
     abc_classification: (formData.get('abc_classification') as any) || 'A',
+    assigned_user_id: (formData.get('assigned_user_id') as string) || null,
     current_stock: 0 // Empieza en 0
   })
 
@@ -97,8 +98,8 @@ export async function updateSupply(id: string, formData: FormData) {
 
   let costPerUnit = 0
   let packageCost = 0
-  let quantityPerPackage = 1
-  let purchaseUnit = null
+  let quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || null
+  let purchaseUnit = (formData.get('purchase_unit') as string) || null
   let provider = null
   let brand = null
 
@@ -108,12 +109,10 @@ export async function updateSupply(id: string, formData: FormData) {
 
   if (supplyType === 'purchase') {
     packageCost = parseFloat(formData.get('package_cost') as string) || 0
-    quantityPerPackage = parseFloat(formData.get('quantity_per_package') as string) || 1
-    purchaseUnit = formData.get('purchase_unit') as string
     provider = formData.get('provider') as string
     brand = formData.get('brand') as string
 
-    costPerUnit = quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
+    costPerUnit = quantityPerPackage && quantityPerPackage > 0 ? packageCost / quantityPerPackage : 0
   } else {
     // Producción: Si enviaron manual_cost, úsalo. Si no, intenta recalcular o mantener.
     // Lo ideal es que al guardar Yield, se dispare un recálculo.
@@ -149,7 +148,8 @@ export async function updateSupply(id: string, formData: FormData) {
       shrinkage_percent: shrinkagePercent,
       average_weight: averageWeight,
       counting_mode: countingMode,
-      abc_classification: abcClassification
+      abc_classification: abcClassification,
+      assigned_user_id: (formData.get('assigned_user_id') as string) || null
     })
     .eq('id', id)
 
@@ -417,6 +417,20 @@ export async function updateBulkClassification(ids: string[], classification: 'A
   const { error } = await supabaseAdmin
     .from('supplies')
     .update({ abc_classification: classification })
+    .in('id', ids)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/supplies')
+  revalidatePath('/settings')
+  return { success: true }
+}
+
+// 9. ACTUALIZACIÓN MASIVA DE ASIGNACIÓN
+export async function updateBulkAssignment(ids: string[], userId: string | null) {
+  const { error } = await supabaseAdmin
+    .from('supplies')
+    .update({ assigned_user_id: userId })
     .in('id', ids)
 
   if (error) return { error: error.message }

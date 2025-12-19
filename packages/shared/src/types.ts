@@ -80,6 +80,7 @@ export type Supply = {
   shrinkage_percent?: number; // Porcentaje de merma (0-100)
   abc_classification?: 'A' | 'B' | 'C'; // Clasificación ABC
   average_weight?: number | null; // Peso promedio por pieza (para Smart Conversion)
+  assigned_user_id?: string | null; // Usuario responsable de la compra
   created_at?: string;
 };
 

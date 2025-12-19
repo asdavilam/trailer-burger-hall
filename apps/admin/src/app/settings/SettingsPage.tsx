@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Supply } from '@trailer/shared'
 import { CountingModeSettings } from './CountingModeSettings'
 import { ClassificationSettings } from './ClassificationSettings'
+import { AssignmentSettings } from './AssignmentSettings'
 import { DaySelector } from './DaySelector'
 
 export default function SettingsPage({ initialSettings, supplies }: { initialSettings: FinancialSettings, supplies: Supply[] }) {
@@ -305,6 +306,9 @@ function InventorySettingsForm({ initialSettings, supplies }: { initialSettings:
             </div>
             <div className="mt-8">
                 <ClassificationSettings supplies={supplies} />
+            </div>
+            <div className="mt-8">
+                <AssignmentSettings supplies={supplies} />
             </div>
         </>
     )

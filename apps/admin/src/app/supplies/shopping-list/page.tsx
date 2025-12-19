@@ -10,10 +10,20 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { getFinancialSettings } from '@/app/settings/actions'
 
-export default async function ShoppingListPage() {
+export const dynamic = 'force-dynamic'
+
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function ShoppingListPage(props: Props) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // Filtro de vista
+  const filter = (searchParams?.filter as string) || 'mine' // 'mine' | 'all'
 
   // 1. Traemos TODOS los insumos
   const { data } = await supabase
@@ -57,19 +67,9 @@ export default async function ShoppingListPage() {
       if (missing > 0) {
         // Buscar sus ingredientes
         const myIngredients = allIngredients?.filter(ing => ing.parent_supply_id === item.id) || []
-
-        // El rendimiento (yield_quantity) es cuánto sale de la receta.
-        // Si yield_quantity = 1, entonces ingredients list es para 1 unidad.
-        // Si yield_quantity > 1, entonces ingredients list es para N unidades.
-        // Factor unitario = 1 / yield_quantity
-
         const yieldQty = item.yield_quantity || 1
 
         myIngredients.forEach(ing => {
-          // Cuánto del ingrediente se necesita para cubrir 1 unidad faltante del padre?
-          // (ing.quantity) es lo que se usa para producir (yieldQty) del padre.
-          // Por ende, por cada unidad faltante del padre, necesitamos (ing.quantity / yieldQty)
-
           const quantityPerParentUnit = ing.quantity / yieldQty
           const totalIngredientNeeded = quantityPerParentUnit * missing
 
@@ -81,27 +81,21 @@ export default async function ShoppingListPage() {
   })
 
   // 3. FILTRADO INTELIGENTE:
-  // - Stock bajo (<= min_stock) O (Stock - Demanda <= min_stock)
-  // - NO es producción (los de producción se disolvieron en componentes)
-  // - NO comprado hoy
   const shoppingList = supplies.filter(item => {
     // Si es producción, lo ignoramos (ya desglosamos sus necesidades)
     if (item.supply_type === 'production') return false
 
+    // FILTRO DE USUARIO (Responsabilidad)
+    if (filter === 'mine') {
+      // Mostrar solo si: NO tiene asignado a nadie (general) O está asignado a MI.
+      // Si está asignado a otro, lo ocultamos.
+      if (item.assigned_user_id && item.assigned_user_id !== user.id) return false
+    }
+
     const min = item.min_stock ?? 5
     const target = min * bufferMultiplier
-
-    // Demanda extra derivada de productos compuestos
     const extraDemand = demandMap.get(item.id) || 0
-
-    // El stock efectivo es lo que tienes MENOS lo que ya está "comprometido" para producción
-    // Si tienes 10kg, pero necesitas 8kg para hamburguesas, tu stock libre es 2kg.
     const effectiveStock = item.current_stock - extraDemand
-
-    // Condición de compra:
-    // 1. Si el stock real está bajo el mínimo
-    // 2. O si el stock efectivo (restando demanda) cae bajo el objetivo (compra lo necesario para cubrir demanda + buffer)
-    // Simplificación: Si effectiveStock < target, hay que comprar.
 
     const needsPurchase = effectiveStock < target
     const isPurchasedToday = purchasedTodayIds.has(item.id)
@@ -109,43 +103,63 @@ export default async function ShoppingListPage() {
     return needsPurchase && !isPurchasedToday
   })
 
-  // Lista de lo comprado hoy (para referencia)
-  const purchasedList = supplies.filter(item => purchasedTodayIds.has(item.id))
+  // Lista de lo comprado hoy (para referencia) - Misma lógica de filtro
+  const purchasedList = supplies.filter(item => {
+    if (filter === 'mine') {
+      if (item.assigned_user_id && item.assigned_user_id !== user.id) return false
+    }
+    return purchasedTodayIds.has(item.id)
+  })
+
 
   // Calcular costo estimado total
   const totalCost = shoppingList.reduce((acc, item) => {
-    // Calcular meta usando el multiplicador configurado
     const target = (item.min_stock || 0) * bufferMultiplier
     const extraDemand = demandMap.get(item.id) || 0
-
-    // Necesitamos llegar al target + cubrir la demanda extra
-    // Equivalente a: (target + extraDemand) - current_stock
     const requiredTotal = target + extraDemand
     const missing = requiredTotal - item.current_stock
-
     const cost = missing > 0 ? missing * item.cost_per_unit : 0
     return acc + cost
   }, 0)
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <PageHeader
-        title="Lista de Compras 🛒"
-        description={`Insumos a reponer (Meta: x${bufferMultiplier} del mínimo + Demanda de Producción).`}
-      >
-        <Button variant="ghost" asChild>
-          <Link href="/supplies">
-            ← Inventario
+      <div className='flex flex-col sm:flex-row justify-between sm:items-start gap-4 mb-6'>
+        <PageHeader
+          title="Lista de Compras 🛒"
+          description={`Insumos a reponer (Meta: x${bufferMultiplier} del mínimo + Demanda).`}
+        >
+          <Button variant="ghost" asChild>
+            <Link href="/supplies">
+              ← Inventario
+            </Link>
+          </Button>
+        </PageHeader>
+
+        <div className="flex bg-gray-100 p-1 rounded-lg self-start">
+          <Link
+            href="/supplies/shopping-list?filter=mine"
+            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${filter === 'mine' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:bg-gray-200'}`}
+          >
+            👤 Mis Compras
           </Link>
-        </Button>
-      </PageHeader>
+          <Link
+            href="/supplies/shopping-list?filter=all"
+            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${filter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-200'}`}
+          >
+            🌍 Ver Todo
+          </Link>
+        </div>
+      </div>
 
       {shoppingList.length === 0 ? (
         <Card className="bg-[#f0fdf4] border-[#bbf7d0]">
           <CardContent className="p-10 text-center">
             <div className="text-4xl mb-4">🎉</div>
             <h2 className="text-xl font-bold text-[#15803d] mb-2">¡Todo en orden!</h2>
-            <p className="text-[#166534]">No hay insumos urgentes por comprar hoy.</p>
+            <p className="text-[#166534]">
+              {filter === 'mine' ? 'No tienes compras pendientes hoy.' : 'No hay insumos urgentes por comprar hoy.'}
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -186,7 +200,14 @@ export default async function ShoppingListPage() {
                       <div className="flex items-center gap-3">
                         <div className={`h-8 w-1 rounded-full flex-shrink-0 ${isCritical ? 'bg-red-500' : 'bg-orange-400'}`} />
                         <div>
-                          <div className="font-bold text-[var(--color-secondary)] text-lg leading-tight">{item.name}</div>
+                          <div className="font-bold text-[var(--color-secondary)] text-lg leading-tight flex items-center gap-2">
+                            {item.name}
+                            {item.assigned_user_id && item.assigned_user_id === user.id && (
+                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full uppercase font-bold tracking-wider">
+                                Mi Responsabilidad
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-[#3b1f1a]/50 font-bold uppercase tracking-wider mt-1 flex gap-2">
                             <span>{item.provider || 'Genérico'}</span>
                             {/* Mostrar si hay demanda derivada */}
@@ -254,7 +275,7 @@ export default async function ShoppingListPage() {
       {shoppingList.length > 0 && (
         <div className="mt-8 flex justify-end">
           <Button variant="secondary" className="gap-2">
-            <span>🖨️</span> Imprimir Lista
+            <span>🖨️</span> Imprimir {filter === 'mine' ? 'Mi Lista' : 'Lista Completa'}
           </Button>
         </div>
       )}

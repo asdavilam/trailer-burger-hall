@@ -84,11 +84,23 @@ export function ProductionListClient({ supplies, bufferMultiplier }: Props) {
         },
         {
             header: 'Rendimiento',
-            cell: (item: Supply) => (
-                <div className="text-sm">
-                    <span className="font-medium">{item.yield_quantity} {item.unit}</span>
-                </div>
-            )
+            cell: (item: Supply) => {
+                const hasPresentation = item.quantity_per_package && item.purchase_unit
+                const presentationQty = hasPresentation
+                    ? (item.yield_quantity! / item.quantity_per_package!).toFixed(2)
+                    : null
+
+                return (
+                    <div className="text-sm">
+                        <span className="font-medium">{item.yield_quantity} {item.unit}</span>
+                        {hasPresentation && (
+                            <div className="text-[10px] text-blue-600 font-bold">
+                                ≈ {presentationQty} {item.purchase_unit}
+                            </div>
+                        )}
+                    </div>
+                )
+            }
         },
         {
             header: 'Estado',

@@ -247,9 +247,52 @@ export function ProductionModal({ supply, onClose }: Props) {
                             value={yieldQuantity}
                             onChange={(e) => setYieldQuantity(e.target.value === '' ? '' : parseFloat(e.target.value))}
                             required
-                            placeholder="Ej. 40 litros, 20 piezas..."
+                            placeholder="Ej. 900 (para ml)"
                             className="w-full p-2 border rounded bg-white border-purple-200 font-bold text-lg text-purple-900"
                         />
+                    </div>
+
+                    {/* Presentación (Opcional) */}
+                    <div className="mb-4 bg-blue-50 p-3 rounded border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                            <label className="block text-xs font-bold text-blue-800 uppercase">
+                                📦 Presentación de Conteo (Opcional)
+                            </label>
+                        </div>
+                        <p className="text-[10px] text-blue-600 mb-3">
+                            Si manejas este producto en presentaciones (ej: botellas de 500ml), llena estos campos para visualizar el stock en unidades manejables.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre de presentación</label>
+                                <input
+                                    name="purchase_unit"
+                                    type="text"
+                                    defaultValue={supply?.purchase_unit || ''}
+                                    placeholder="Ej: botella, mamila"
+                                    className="w-full p-2 border rounded text-sm focus:ring-1 ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">{supply?.unit || 'Unidades'} por presentación</label>
+                                <input
+                                    name="quantity_per_package"
+                                    type="number"
+                                    step="0.01"
+                                    defaultValue={supply?.quantity_per_package || ''}
+                                    placeholder="Ej: 500"
+                                    className="w-full p-2 border rounded text-sm focus:ring-1 ring-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Preview calculation */}
+                        {supply?.quantity_per_package && Number(yieldQuantity) > 0 && (
+                            <div className="mt-2 p-2 bg-white rounded text-xs text-blue-900 font-medium">
+                                ✨ Rendimiento: {(Number(yieldQuantity) / supply.quantity_per_package).toFixed(2)} {supply.purchase_unit || 'presentaciones'}
+                            </div>
+                        )}
                     </div>
 
                     {/* Lista de Ingredientes (Solo si ya existe el insumo) */}
